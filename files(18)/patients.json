@@ -1,0 +1,115 @@
+[
+  {
+    "id": "P001",
+    "name": "Ravi Kumar",
+    "age": 54,
+    "gender": "Male",
+    "diagnosis": "Type 2 Diabetes Mellitus",
+    "diet_stage": "solid",
+    "calorie_target": 1800,
+    "sodium_limit_mg": 2000,
+    "potassium_limit_mg": 4000,
+    "fluid_limit_ml": null,
+    "restrictions": [
+      "low_gi",
+      "no_sugar",
+      "no_refined_carbs",
+      "low_sodium"
+    ],
+    "language": "te",
+    "language_name": "Telugu",
+    "phone": "+919876543210",
+    "caregiver_phone": "+919876543211",
+    "ward": "Medical Ward B",
+    "bed": "B-14",
+    "admitted_on": "2025-03-01",
+    "medications": [
+      { "name": "Metformin", "dose": "500mg", "class": "Biguanide", "frequency": "BD" },
+      { "name": "Glipizide", "dose": "5mg", "class": "Sulfonylurea", "frequency": "OD" },
+      { "name": "Atorvastatin", "dose": "10mg", "class": "Statin", "frequency": "OD" },
+      { "name": "Lisinopril", "dose": "5mg", "class": "ACE Inhibitor", "frequency": "OD" }
+    ],
+    "protein_target_g": 90,
+    "carb_target_g": 225,
+    "attending_dietitian": "Dr. Priya Nair",
+    "notes": "Patient is compliant. Educate on GI index of South Indian staples."
+  },
+  {
+    "id": "P002",
+    "name": "Meena Iyer",
+    "age": 62,
+    "gender": "Female",
+    "diagnosis": "Chronic Renal Failure (CKD Stage 4)",
+    "diet_stage": "soft",
+    "calorie_target": 1600,
+    "sodium_limit_mg": 1500,
+    "potassium_limit_mg": 2000,
+    "fluid_limit_ml": 1200,
+    "restrictions": [
+      "low_potassium",
+      "low_phosphorus",
+      "low_sodium",
+      "fluid_restricted",
+      "renal_diet"
+    ],
+    "language": "ta",
+    "language_name": "Tamil",
+    "phone": "+919865432109",
+    "caregiver_phone": "+919865432108",
+    "ward": "Nephrology Ward",
+    "bed": "N-07",
+    "admitted_on": "2025-02-25",
+    "medications": [
+      { "name": "Calcium Carbonate", "dose": "500mg", "class": "Phosphate Binder", "frequency": "TDS" },
+      { "name": "Erythropoietin", "dose": "4000IU", "class": "ESA", "frequency": "Weekly" },
+      { "name": "Furosemide", "dose": "40mg", "class": "Loop Diuretic", "frequency": "OD" },
+      { "name": "Sodium Bicarbonate", "dose": "650mg", "class": "Alkali Supplement", "frequency": "BD" }
+    ],
+    "protein_target_g": 48,
+    "carb_target_g": 260,
+    "attending_dietitian": "Dr. Priya Nair",
+    "notes": "Fluid log mandatory. Monitor K+ daily. Dialysis every alternate day."
+  },
+  {
+    "id": "P003",
+    "name": "Arjun Singh",
+    "age": 38,
+    "gender": "Male",
+    "diagnosis": "Post-GI Surgery (Day 2 — Colostomy Reversal)",
+    "diet_stage": "liquid",
+    "calorie_target": 1200,
+    "sodium_limit_mg": 2300,
+    "potassium_limit_mg": 4000,
+    "fluid_limit_ml": null,
+    "restrictions": [
+      "low_fiber",
+      "low_residue",
+      "easy_digest",
+      "no_spicy",
+      "no_raw_vegetables"
+    ],
+    "language": "hi",
+    "language_name": "Hindi",
+    "phone": "+918765432190",
+    "caregiver_phone": "+918765432191",
+    "ward": "Surgical Ward A",
+    "bed": "A-22",
+    "admitted_on": "2025-03-05",
+    "diet_transition": {
+      "from_stage": "liquid",
+      "to_stage": "soft",
+      "effective_from_day": 4,
+      "physician_note": "Advance to soft diet Day 4 if bowel sounds present and no distension."
+    },
+    "medications": [
+      { "name": "Omeprazole", "dose": "20mg", "class": "PPI", "frequency": "OD" },
+      { "name": "Ondansetron", "dose": "4mg", "class": "Antiemetic", "frequency": "PRN" },
+      { "name": "Tramadol", "dose": "50mg", "class": "Opioid Analgesic", "frequency": "PRN" },
+      { "name": "Metoclopramide", "dose": "10mg", "class": "Prokinetic", "frequency": "TDS" }
+    ],
+    "protein_target_g": 75,
+    "carb_target_g": 150,
+    "attending_dietitian": "Dr. Priya Nair",
+    "notes": "Post-op Day 2. Appetite severely suppressed. Watch for refusal pattern. Consider supplementation if 3 consecutive refusals."
+  }
+]

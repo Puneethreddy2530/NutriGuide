@@ -1,0 +1,39 @@
+# CAP³S Backend Requirements
+# pip install -r requirements.txt
+
+# ── Core FastAPI ───────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.0
+python-dotenv==1.0.1
+pydantic==2.9.2
+
+# ── HTTP clients ────────────────────────────────────────────────────
+httpx==0.27.2
+
+# ── Gemini Vision / AI ──────────────────────────────────────────────
+google-generativeai==0.8.3
+Pillow==10.4.0
+
+# ── DuckDB Analytics ────────────────────────────────────────────────
+duckdb==1.1.3
+pandas==2.2.3
+
+# ── WhatsApp (Twilio) ───────────────────────────────────────────────
+twilio==9.3.4
+
+# ── PDF Reports ─────────────────────────────────────────────────────
+reportlab==4.2.5
+
+# ── Post-Quantum Cryptography ────────────────────────────────────────
+# Real Dilithium3 (NIST FIPS 204):
+dilithium-py==0.0.3
+numpy==1.26.4
+
+# For PQC benchmark RSA comparison (optional):
+cryptography==43.0.3
+
+# ── Multipart form (WhatsApp webhook) ───────────────────────────────
+python-multipart==0.0.12
+
+# ── Standard library (no install needed) ────────────────────────────
+# json, hashlib, hmac, base64, threading, logging, datetime, math, re

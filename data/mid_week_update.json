@@ -1,0 +1,22 @@
+{
+  "update_id": "UPD_001",
+  "patient_id": "P003",
+  "patient_name": "Arjun Singh",
+  "physician": "Dr. Ramesh Gupta",
+  "timestamp": "2025-03-06T09:30:00",
+  "effective_from_day": 4,
+  "previous_order": {
+    "diet_stage": "liquid",
+    "calorie_target": 1200,
+    "restrictions": ["liquid-only", "no-fiber", "no-solids", "no-seeds", "no-raw-vegetables", "no-whole-grains", "no-fried", "no-spicy", "low-fat", "low-residue"]
+  },
+  "new_order": {
+    "diet_stage": "soft",
+    "calorie_target": 1600,
+    "restrictions": ["soft-foods-only", "no-raw-vegetables", "no-seeds", "no-fried", "low-fiber", "no-spicy"],
+    "physician_note": "Patient tolerated liquid diet well. Bowel sounds present. Progress to soft mechanical diet. No raw vegetables. No seeds. All food must be well-cooked and easily mashable. Re-evaluate on Day 7 for regular diet.",
+    "allowed_additions": ["idli", "soft khichdi", "mashed dal", "well-cooked soft vegetables", "scrambled egg white", "curd", "soft cooked fish", "poha", "semolina upma"]
+  },
+  "notification_targets": ["dietitian", "kitchen", "patient_whatsapp", "caregiver_whatsapp"],
+  "revision_summary": "Diet upgraded from clear liquid to soft mechanical. Calorie target increased by 400 kcal/day. 7 ingredients now unlocked from inventory. Kitchen to update tray from Day 4 breakfast onwards."
+}

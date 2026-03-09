@@ -1,0 +1,37 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# DuckDB files
+*.duckdb
+*.duckdb.wal
+
+# Vite cache
+.vite/
+
+# Node modules
+node_modules/
+dist/
+.cache/
+
+# Environment / secrets (never commit real .env files)
+.env
+**/.env
+!**/.env.example
+neopulse_keys.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ngrok binary
+ngrok.exe

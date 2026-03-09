@@ -1,0 +1,132 @@
+{
+  "restriction_rules": {
+    "low_gi": {
+      "description": "Low Glycemic Index diet for diabetes management (GI < 55)",
+      "forbidden_ingredients": ["white rice", "white bread", "maida", "refined flour", "sugar", "jaggery", "glucose", "corn syrup", "white potato", "watermelon", "pineapple"],
+      "forbidden_tags": ["high_gi", "refined_carb", "natural_sugar"],
+      "allowed_tags": ["low_gi", "whole_grain", "diabetic_friendly"],
+      "rationale": "High-GI foods cause rapid postprandial glucose spikes, worsening glycaemic control in T2DM",
+      "source": "ADA 2024 — Standards of Medical Care in Diabetes"
+    },
+    "no_sugar": {
+      "description": "Strict no added sugar — includes all refined and natural sugars",
+      "forbidden_ingredients": ["sugar", "jaggery", "honey", "maple syrup", "glucose", "fructose", "corn syrup", "sweets", "mithai", "halwa", "payasam", "gulab jamun", "rasgulla"],
+      "forbidden_tags": ["added_sugar", "high_sugar", "natural_sugar"],
+      "rationale": "Direct glycaemic threat. All forms of concentrated sugar contraindicated in active diabetes",
+      "source": "ADA 2024"
+    },
+    "no_refined_carbs": {
+      "description": "No refined/processed carbohydrates",
+      "forbidden_ingredients": ["white rice", "maida", "refined flour", "white bread", "naan", "biscuits", "cookies", "cake", "white pasta", "vermicelli"],
+      "forbidden_tags": ["refined_carb", "refined_grain"],
+      "rationale": "Refined carbohydrates stripped of fibre cause rapid glucose absorption",
+      "source": "ADA 2024"
+    },
+    "low_potassium": {
+      "description": "Potassium restriction < 2000mg/day for CKD/renal failure",
+      "forbidden_ingredients": ["banana", "orange", "tomato", "potato", "spinach", "dates", "nuts", "coconut water", "avocado", "dried fruits", "kidney beans", "black beans"],
+      "forbidden_tags": ["high_potassium"],
+      "max_per_meal_mg": 500,
+      "rationale": "Hyperkalaemia in CKD causes fatal cardiac arrhythmias. Strict dietary K+ control mandatory",
+      "source": "NKF KDOQI 2020 — CKD Nutrition Guidelines"
+    },
+    "low_phosphorus": {
+      "description": "Phosphorus restriction < 800mg/day in renal failure",
+      "forbidden_ingredients": ["dairy milk", "cheese", "nuts", "seeds", "cola drinks", "beer", "dark chocolate", "processed meats", "oysters", "sardines"],
+      "forbidden_tags": ["high_phosphorus"],
+      "rationale": "Phosphorus retention in CKD causes secondary hyperparathyroidism and vascular calcification",
+      "source": "KDOQI 2020"
+    },
+    "low_sodium": {
+      "description": "Sodium restriction < 1500-2000mg/day",
+      "forbidden_ingredients": ["salt", "soy sauce", "pickles", "papad", "processed cheese", "canned foods", "instant noodles", "chips", "salted butter", "baking soda", "ajinomoto"],
+      "forbidden_tags": ["high_sodium", "processed_food"],
+      "rationale": "Excess sodium worsens hypertension, fluid retention, and accelerates CKD progression",
+      "source": "IHA 2023 — Indian Hypertension Guidelines; KDIGO 2023"
+    },
+    "fluid_restricted": {
+      "description": "Fluid intake restricted to 1000-1200ml/day in dialysis/ESRD",
+      "forbidden_ingredients": ["ice cream", "gelatin desserts", "high-water fruits in excess", "soups in excess"],
+      "forbidden_tags": ["high_fluid"],
+      "notes": "Count all fluid sources including water content in foods. Dialysis patients must strictly comply.",
+      "rationale": "Fluid overload in ESRD causes pulmonary oedema and cardiac complications",
+      "source": "KDIGO 2023 — CKD Fluid Management"
+    },
+    "renal_diet": {
+      "description": "Comprehensive renal diet — combined K+, P, Na, fluid restriction",
+      "forbidden_ingredients": ["banana", "orange", "tomato", "potato", "spinach", "dairy milk", "nuts", "coconut water", "processed foods", "pickles"],
+      "forbidden_tags": ["high_potassium", "high_phosphorus", "high_sodium"],
+      "rationale": "Renal failure impairs excretion of K+, P, Na. Combined restriction prevents life-threatening accumulation",
+      "source": "NKF KDOQI 2020; KDIGO 2023"
+    },
+    "low_fiber": {
+      "description": "Low fibre diet post-surgery (< 10g/day) to reduce bowel stimulation",
+      "forbidden_ingredients": ["raw vegetables", "whole grains", "nuts", "seeds", "dried fruits", "legumes", "beans", "lentils", "bran", "high-fiber cereals"],
+      "forbidden_tags": ["high_fiber", "raw_vegetable", "whole_grain"],
+      "rationale": "Post-GI surgery requires minimal bowel activity to allow anastomotic healing",
+      "source": "ESPEN 2021 — Perioperative Nutrition Guidelines"
+    },
+    "low_residue": {
+      "description": "Low-residue diet minimising undigested material reaching the colon",
+      "forbidden_ingredients": ["raw salads", "corn", "peas", "coconut", "tough meats", "whole grains", "seeds", "skins"],
+      "forbidden_tags": ["high_residue", "raw_vegetable", "high_fiber"],
+      "rationale": "Reduces stool volume and frequency to protect surgical sites in colon/rectal procedures",
+      "source": "ESPEN 2021"
+    },
+    "easy_digest": {
+      "description": "Easy-to-digest foods only for post-operative or compromised GI function",
+      "forbidden_ingredients": ["fried foods", "fatty meats", "spicy foods", "raw onion", "raw garlic", "chilli", "red meat", "cabbage", "broccoli", "cauliflower in large amounts"],
+      "forbidden_tags": ["spicy", "fried", "hard_to_digest"],
+      "rationale": "Post-surgical gut motility is impaired. Easily digestible foods minimise GI workload",
+      "source": "ESPEN 2021"
+    },
+    "no_spicy": {
+      "description": "No spicy or irritant foods",
+      "forbidden_ingredients": ["chilli powder", "red chilli", "pepper", "spicy pickles", "sambal", "hot sauce", "chaat masala"],
+      "forbidden_tags": ["spicy", "irritant"],
+      "rationale": "Spices irritate the gastric and intestinal mucosa post-surgery",
+      "source": "ESPEN 2021"
+    },
+    "no_raw_vegetables": {
+      "description": "No raw vegetables — all must be cooked, steamed or pureed",
+      "forbidden_ingredients": ["raw salad", "raw onion", "raw tomato", "raw cabbage", "cucumber", "raw carrot"],
+      "forbidden_tags": ["raw_vegetable"],
+      "rationale": "Raw vegetable fibre is indigestible post-GI surgery",
+      "source": "ESPEN 2021"
+    }
+  },
+
+  "auto_substitution_map": {
+    "white rice": ["Brown Rice", "Ragi Flour", "Barley"],
+    "sugar": ["Stevia Powder"],
+    "jaggery": ["Stevia Powder"],
+    "maida": ["Wheat Flour (Atta)", "Ragi Flour"],
+    "refined flour": ["Wheat Flour (Atta)", "Ragi Flour"],
+    "banana": ["Apple", "Pear", "Papaya"],
+    "potato": ["Ash Gourd (Winter Melon)", "Bottle Gourd (Lauki)"],
+    "dairy milk": ["Curd (Low-fat Yogurt)", "Buttermilk (Chaas)"],
+    "coconut water": ["Vegetable Broth (Low Sodium)", "Buttermilk (Chaas)"],
+    "fried foods": ["Steamed", "Boiled"],
+    "red meat": ["Chicken Breast", "Egg Whites", "Tofu"],
+    "whole grains (high-fiber)": ["Semolina (Rava)", "Poha (Flattened Rice)", "Idli Batter"],
+    "raw vegetables": ["Bottle Gourd (Lauki)", "Ridge Gourd (Turai)", "Ash Gourd (Winter Melon)"]
+  },
+
+  "diet_stage_rules": {
+    "liquid": {
+      "allowed_consistencies": ["liquid", "clear", "strained", "smooth"],
+      "forbidden_consistencies": ["solid", "chunky", "raw"],
+      "notes": "All items must be in liquid form. No solid particles. Clear soups, strained dals, juices only."
+    },
+    "soft": {
+      "allowed_consistencies": ["soft", "mashed", "well-cooked", "liquid"],
+      "forbidden_consistencies": ["raw", "hard", "chewy", "fried"],
+      "notes": "Soft, moist foods. No hard or chewy textures. Idli, soft khichdi, well-cooked dals."
+    },
+    "solid": {
+      "allowed_consistencies": ["all"],
+      "forbidden_consistencies": [],
+      "notes": "Regular diet with all restrictions applied."
+    }
+  }
+}
