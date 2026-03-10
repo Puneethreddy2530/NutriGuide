@@ -77,33 +77,33 @@ In Indian hospitals, **the gap between what a physician prescribes and what actu
 <tr>
 <td width="50%">
 
-### ❌ What Other Teams Do
+### Standard Clinical Nutrition Agents
 
 ```
-"Hey GPT, give me a 7-day meal plan
- for a diabetic patient"
+LLM prompt → "Generate 7-day meal plan"
          ↓
-   LLM hallucinates calories
-   ~30% macro inaccuracy
-   No cryptographic proof
-   No audit trail
-   No multilingual support
+  Single-pass generation
+  Calorie accuracy varies
+  Static knowledge base
+  Classical encryption (RSA/ECDSA)
+  Single-language output
 ```
 
 </td>
 <td width="50%">
 
-### ✅ What NutriGuide Does
+### NutriGuide's Approach
 
 ```
-40 ingredients × restriction filter
+Semantic restriction layer
+  + Self-learning RAG knowledge base
          ↓
   0/1 Knapsack DP optimization
   ±3.5% calorie accuracy (deterministic)
          ↓
-  GPT-4o names dish + prep notes ONLY
+  LLM scoped to naming + prep ONLY
          ↓
-  Every update signed with Dilithium3
+  3-Layer PQC on every EHR mutation
   Pr[Forge] ≤ 2⁻¹¹²
          ↓
   Delivered in 9 Indian languages
@@ -113,13 +113,27 @@ In Indian hospitals, **the gap between what a physician prescribes and what actu
 </tr>
 </table>
 
-**Three innovations that no other clinical nutrition system has:**
+### What Sets NutriGuide Apart
+
+| Dimension | Standard Approach | NutriGuide |
+|---|---|---|
+| **Meal generation** | LLM generates full meal plan end-to-end | 0/1 Knapsack DP selects ingredients mathematically → LLM only names the dish |
+| **Calorie accuracy** | Varies with prompt engineering | **±3.5% deterministic** (solved, not predicted) |
+| **Knowledge grounding** | Static prompts or single-doc context | **Semantic RAG layer** — 10 clinical guidelines (NKF, KDOQI, ADA, ESPEN) with TF-IDF retrieval + PQC-signed chunks |
+| **Self-learning feedback** | No consumption loop | **Consumption → OLAP → correlation insight → next plan adapts** (Pearson r feedback between adherence and compliance) |
+| **Data integrity** | RSA/ECDSA (quantum-vulnerable) | **NIST FIPS 204 Dilithium3** — 3-layer hybrid PQC, 45× faster, quantum-resistant |
+| **Language support** | English-only or basic i18n | **9 Indian languages** with IndicBERT zero-shot NLP for patient feedback classification |
+| **Clinical ML** | Single LLM call | **4 production models** — EfficientNet-B4, BioBERT, Flan-T5, XLM-RoBERTa running in parallel |
+
+### Five Core Innovations
 
 | Innovation | What It Is | Why It Matters |
 |---|---|---|
 | 🔐 **NeoPulse-Shield v1** | 3-layer hybrid PQC (Dilithium3 + HMAC-SHA3-256 + UOV) | First application of NIST FIPS 204 to clinical EHR signatures. Quantum-resistant for 100+ years. |
-| 🧮 **Knapsack × LLM Hybrid** | 0/1 DP algorithm for ingredient selection → LLM for naming only | Deterministic ±3.5% calorie accuracy vs ~30% LLM hallucination rate |
+| 🧮 **Knapsack × LLM Hybrid** | 0/1 DP algorithm for ingredient selection → LLM scoped to naming only | Deterministic ±3.5% calorie accuracy. The algorithm solves; the LLM describes. |
 | 🧠 **4 Production ML Models** | EfficientNet-B4, BioBERT, Flan-T5, IndicBERT in one pipeline | Computer vision + NLP + clinical reasoning + 9-language zero-shot — all running simultaneously |
+| 📡 **Semantic RAG Layer** | TF-IDF retrieval over 10 PQC-signed clinical knowledge documents | Every RAG response is grounded in NKF/KDOQI/ADA/ESPEN evidence with cryptographic source integrity |
+| 🔄 **Self-Learning Feedback Loop** | Consumption logs → OLAP aggregation → Pearson correlation → next-plan adaptation | The system learns from what patients actually eat — compliance data directly influences future meal optimization |
 
 ---
 
