@@ -74,7 +74,7 @@ def check_env():
     api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:
         # Try reading from .env directly
-        for line in env_path.read_text().splitlines():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
             if line.startswith("GEMINI_API_KEY="):
                 api_key = line.split("=", 1)[1].strip()
     if not api_key:

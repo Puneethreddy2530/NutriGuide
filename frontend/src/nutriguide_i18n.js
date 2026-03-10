@@ -1,15 +1,15 @@
 /**
- * CAP³S — 9-Language UI Translation Dictionary
+ * NutriGuide — 9-Language UI Translation Dictionary
  * Languages: English · Hindi · Marathi · Telugu · Tamil · Kannada · Bengali · Gujarati · Punjabi
  *
  * Usage:
- *   import { t } from '../cap3s_i18n.js'
+ *   import { t } from '../nutriguide_i18n.js'
  *   import { LangContext } from '../App.jsx'
  *   const { lang } = useContext(LangContext)
  *   t(lang, 'key')
  */
 
-export const CAP3S_T = {
+export const NUTRIGUIDE_T = {
   english: {
     // ── Dashboard ──────────────────────────────────
     command_center:    'Dietitian Command Center',
@@ -91,7 +91,7 @@ export const CAP3S_T = {
     reports_title:     'Reports & Discharge',
     reports_sub:       'Weekly nutrition PDFs · PQC-signed · 30-day discharge guides · WhatsApp delivery',
     download_pdf:      '▣ Download Nutrition PDF',
-    discharge:         '🚀 Discharge',
+    discharge:         '▷ Discharge',
     discharge_patient: 'Discharge Patient',
     calorie_target:    'Calorie Target',
     language:          'Language',
@@ -171,7 +171,7 @@ export const CAP3S_T = {
     reports_title:     'रिपोर्ट और डिस्चार्ज',
     reports_sub:       'साप्ताहिक न्यूट्रिशन PDF · PQC-हस्ताक्षरित · 30-दिन गाइड · WhatsApp डिलीवरी',
     download_pdf:      '▣ न्यूट्रिशन PDF डाउनलोड करें',
-    discharge:         '🚀 डिस्चार्ज',
+    discharge:         '▷ डिस्चार्ज',
     discharge_patient: 'मरीज़ डिस्चार्ज करें',
     calorie_target:    'कैलोरी लक्ष्य',
     language:          'भाषा',
@@ -251,7 +251,7 @@ export const CAP3S_T = {
     reports_title:     'अहवाल आणि डिस्चार्ज',
     reports_sub:       'साप्ताहिक न्यूट्रिशन PDF · PQC-स्वाक्षरित · ३०-दिवस मार्गदर्शिका · WhatsApp डिलिव्हरी',
     download_pdf:      '▣ न्यूट्रिशन PDF डाउनलोड करा',
-    discharge:         '🚀 डिस्चार्ज',
+    discharge:         '▷ डिस्चार्ज',
     discharge_patient: 'रुग्ण डिस्चार्ज करा',
     calorie_target:    'कॅलरी लक्ष्य',
     language:          'भाषा',
@@ -331,7 +331,7 @@ export const CAP3S_T = {
     reports_title:     'నివేదికలు & డిశ్చార్జ్',
     reports_sub:       'వారపు న్యూట్రిషన్ PDF · PQC-సంతకం · 30-రోజుల గైడ్ · WhatsApp డెలివరీ',
     download_pdf:      '▣ న్యూట్రిషన్ PDF డౌన్‌లోడ్ చేయండి',
-    discharge:         '🚀 డిశ్చార్జ్',
+    discharge:         '▷ డిశ్చార్జ్',
     discharge_patient: 'రోగిని డిశ్చార్జ్ చేయండి',
     calorie_target:    'కేలరీ లక్ష్యం',
     language:          'భాష',
@@ -411,7 +411,7 @@ export const CAP3S_T = {
     reports_title:     'அறிக்கைகள் & விடுவிப்பு',
     reports_sub:       'வார ஊட்டச்சத்து PDF · PQC-கையொப்பமிட்ட · 30-நாள் வழிகாட்டி · WhatsApp வழங்கல்',
     download_pdf:      '▣ ஊட்டச்சத்து PDF பதிவிறக்கம்',
-    discharge:         '🚀 விடுவிப்பு',
+    discharge:         '▷ விடுவிப்பு',
     discharge_patient: 'நோயாளரை விடுவிக்கவும்',
     calorie_target:    'கலோரி இலக்கு',
     language:          'மொழி',
@@ -491,7 +491,7 @@ export const CAP3S_T = {
     reports_title:     'ವರದಿಗಳು & ಡಿಸ್ಚಾರ್ಜ್',
     reports_sub:       'ಸಾಪ್ತಾಹಿಕ ಪೋಷಣೆ PDF · PQC-ಸಹಿ · 30-ದಿನ ಮಾರ್ಗದರ್ಶಿ · WhatsApp ವಿತರಣೆ',
     download_pdf:      '▣ ಪೋಷಣೆ PDF ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
-    discharge:         '🚀 ಡಿಸ್ಚಾರ್ಜ್',
+    discharge:         '▷ ಡಿಸ್ಚಾರ್ಜ್',
     discharge_patient: 'ರೋಗಿಯನ್ನು ಡಿಸ್ಚಾರ್ಜ್ ಮಾಡಿ',
     calorie_target:    'ಕ್ಯಾಲರಿ ಗುರಿ',
     language:          'ಭಾಷೆ',
@@ -571,7 +571,7 @@ export const CAP3S_T = {
     reports_title:     'প্রতিবেদন ও ছাড়পত্র',
     reports_sub:       'সাপ্তাহিক পুষ্টি PDF · PQC-স্বাক্ষরিত · ৩০-দিনের গাইড · WhatsApp ডেলিভারি',
     download_pdf:      '▣ পুষ্টি PDF ডাউনলোড করুন',
-    discharge:         '🚀 ছাড়পত্র',
+    discharge:         '▷ ছাড়পত্র',
     discharge_patient: 'রোগীকে ছাড় দিন',
     calorie_target:    'ক্যালরি লক্ষ্য',
     language:          'ভাষা',
@@ -651,7 +651,7 @@ export const CAP3S_T = {
     reports_title:     'અહેવાલ અને ડિસ્ચાર્જ',
     reports_sub:       'સાપ્તાહિક પોષણ PDF · PQC-સ્વાક્ષરિત · 30-દિવસ માર્ગદર્શિકા · WhatsApp ડિલિવ.',
     download_pdf:      '▣ પોષણ PDF ડાઉનલોડ કરો',
-    discharge:         '🚀 ડિસ્ચાર્જ',
+    discharge:         '▷ ડિસ્ચાર્જ',
     discharge_patient: 'દર્દીને ડિસ્ચાર્જ કરો',
     calorie_target:    'કૅલરી લક્ષ્ય',
     language:          'ભાષા',
@@ -731,7 +731,7 @@ export const CAP3S_T = {
     reports_title:     'ਰਿਪੋਰਟਾਂ ਅਤੇ ਡਿਸਚਾਰਜ',
     reports_sub:       'ਸਾਪਤਾਹਿਕ ਪੋਸ਼ਣ PDF · PQC-ਦਸਤਖ਼ਤ · 30-ਦਿਨ ਗਾਈਡ · WhatsApp ਡਿਲੀਵਰੀ',
     download_pdf:      '▣ ਪੋਸ਼ਣ PDF ਡਾਊਨਲੋਡ ਕਰੋ',
-    discharge:         '🚀 ਡਿਸਚਾਰਜ',
+    discharge:         '▷ ਡਿਸਚਾਰਜ',
     discharge_patient: 'ਮਰੀਜ਼ ਨੂੰ ਡਿਸਚਾਰਜ ਕਰੋ',
     calorie_target:    'ਕੈਲੋਰੀ ਟੀਚਾ',
     language:          'ਭਾਸ਼ਾ',
@@ -740,5 +740,5 @@ export const CAP3S_T = {
 
 /** Return translated string or fall back to English */
 export function t(lang, key) {
-  return (CAP3S_T[lang] ?? CAP3S_T.english)[key] ?? CAP3S_T.english[key] ?? key
+  return (NUTRIGUIDE_T[lang] ?? NUTRIGUIDE_T.english)[key] ?? NUTRIGUIDE_T.english[key] ?? key
 }

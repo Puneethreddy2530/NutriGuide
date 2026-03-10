@@ -1,6 +1,6 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
-const FONTS = "@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');";
+const FONTS = "@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');";
 
 const FEATURES = [
   {
@@ -70,7 +70,7 @@ export default function CTAPage({ onGetStarted, onBack }) {
   return (
     <div id="cta-scroll-root" style={{
       minHeight: "100vh",
-      background: "radial-gradient(ellipse at 50% -10%, #0d0a2e 0%, #030308 60%)",
+      background: "var(--bg)",
       overflowY: "auto",
       fontFamily: "'DM Mono', monospace",
     }}>
@@ -85,13 +85,13 @@ export default function CTAPage({ onGetStarted, onBack }) {
         .step-card:hover { border-color: rgba(249,115,22,0.4) !important; }
       `}</style>
 
-      {/* â”€â”€ Sticky mini-header â”€â”€ */}
+      {/* ── Sticky mini-header ── */}
       <div style={{
         position: "sticky", top: 0, zIndex: 50,
         padding: "0 40px", height: 56,
         background: scrolled ? "rgba(250,250,249,0.95)" : "transparent",
         backdropFilter: scrolled ? "blur(16px)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
+        borderBottom: scrolled ? "1px solid rgba(0,0,0,0.07)" : "none",
         display: "flex", alignItems: "center", justifyContent: "space-between",
         transition: "all 0.3s",
       }}>
@@ -102,24 +102,24 @@ export default function CTAPage({ onGetStarted, onBack }) {
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 12, color: "#fff", fontWeight: 700,
           }}>N</div>
-          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>NeoPulse</span>
+          <span style={{ fontFamily: "'LEMONMILK', sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)" }}>NeoPulse</span>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={onBack} style={{
             padding: "7px 16px", background: "transparent",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20,
-            fontSize: 11, letterSpacing: 1, cursor: "pointer", color: "rgba(255,255,255,0.4)",
-          }}>â† BACK</button>
+            border: "1px solid rgba(0,0,0,0.1)", borderRadius: 20,
+            fontSize: 11, letterSpacing: 1, cursor: "pointer", color: "var(--text2)",
+          }}>← BACK</button>
           <button onClick={onGetStarted} style={{
             padding: "7px 18px", background: "linear-gradient(135deg, #F97316, #EA580C)",
             border: "none", borderRadius: 20, color: "#fff",
             fontSize: 11, letterSpacing: 1.5, fontWeight: 700, cursor: "pointer",
             boxShadow: "0 3px 14px rgba(249,115,22,0.35)",
-          }}>GET STARTED â†’</button>
+          }}>GET STARTED →</button>
         </div>
       </div>
 
-      {/* â”€â”€ Hero CTA â”€â”€ */}
+      {/* ── Hero CTA ── */}
       <section style={{
         padding: "90px 80px 80px",
         textAlign: "center",
@@ -145,30 +145,30 @@ export default function CTAPage({ onGetStarted, onBack }) {
           fontSize: 10, letterSpacing: 2.5, color: "#60a5fa", fontWeight: 700,
           marginBottom: 28, animation: "fadeUp 0.5s ease",
         }}>
-          â—ˆ YOUR PERSONAL HEALTH INTELLIGENCE PLATFORM
+          ◈ YOUR PERSONAL HEALTH INTELLIGENCE PLATFORM
         </div>
 
         <h1 style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontSize: "clamp(44px, 6vw, 74px)",
-          fontWeight: 900,
-          color: "rgba(255,255,255,0.88)",
-          letterSpacing: -2,
+          fontWeight: 700,
+          color: "var(--text)",
+          letterSpacing: 1,
           lineHeight: 1.06,
           marginBottom: 22,
           animation: "fadeUp 0.55s ease 0.05s both",
         }}>
           Your health, <br />
-          <span style={{ color: "#60a5fa", fontStyle: "italic" }}>understood deeply.</span>
+          <span style={{ color: "var(--accent)", fontStyle: "italic" }}>understood deeply.</span>
         </h1>
 
         <p style={{
-          fontSize: 18, color: "rgba(255,255,255,0.4)", lineHeight: 1.7,
+          fontSize: 18, color: "var(--text2)", lineHeight: 1.7,
           maxWidth: 560, margin: "0 auto 44px",
           animation: "fadeUp 0.55s ease 0.1s both",
         }}>
           AI models trained on real clinical data. Post-quantum encrypted. Entirely private.
-          NeoPulse turns your daily data into a living health story â€” and acts on it.
+          NeoPulse turns your daily data into a living health story — and acts on it.
         </p>
 
         <div style={{
@@ -188,7 +188,7 @@ export default function CTAPage({ onGetStarted, onBack }) {
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 12px 44px rgba(249,115,22,0.5)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 8px 36px rgba(249,115,22,0.38)"; }}
           >
-            START YOUR JOURNEY â†’
+            START YOUR JOURNEY →
           </button>
           <button onClick={onBack} style={{
             padding: "17px 36px", background: "transparent",
@@ -196,8 +196,8 @@ export default function CTAPage({ onGetStarted, onBack }) {
             color: "rgba(0,0,0,0.55)", fontSize: 14, cursor: "pointer",
             transition: "all 0.15s",
           }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "#60a5fa"; e.currentTarget.style.color = "#60a5fa"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(0,0,0,0.55)"; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)"; e.currentTarget.style.color = "rgba(0,0,0,0.55)"; }}
           >
             â† BACK TO HOME
           </button>
@@ -210,14 +210,14 @@ export default function CTAPage({ onGetStarted, onBack }) {
           flexWrap: "wrap",
         }}>
           {[
-            { icon: "ðŸ”’", text: "Post-Quantum Encrypted" },
-            { icon: "ðŸ§ ", text: "3 Clinical AI Models" },
-            { icon: "âš¡", text: "Real-time on device" },
-            { icon: "ðŸŒ", text: "11 Languages" },
+            { icon: "◈", text: "Post-Quantum Encrypted" },
+            { icon: "◎", text: "3 Clinical AI Models" },
+            { icon: "▷", text: "Real-time on device" },
+            { icon: "⊕", text: "11 Languages" },
           ].map(t => (
             <div key={t.text} style={{
               display: "flex", alignItems: "center", gap: 6,
-              fontSize: 11, color: "rgba(255,255,255,0.28)", letterSpacing: 0.5,
+              fontSize: 11, color: "var(--text3)", letterSpacing: 0.5,
             }}>
               <span>{t.icon}</span> {t.text}
             </div>
@@ -225,15 +225,15 @@ export default function CTAPage({ onGetStarted, onBack }) {
         </div>
       </section>
 
-      {/* â”€â”€ Feature Cards â”€â”€ */}
+      {/* ── Feature Cards ── */}
       <section style={{ padding: "40px 80px 80px", background: "#fff", borderTop: "1px solid rgba(0,0,0,0.05)" }}>
         <div style={{ textAlign: "center", marginBottom: 52 }}>
           <div style={{ fontSize: 10, letterSpacing: 4, color: "#60a5fa", fontWeight: 700, marginBottom: 14 }}>
             WHAT'S INSIDE
           </div>
           <h2 style={{
-            fontFamily: "'Syne', sans-serif", fontSize: 38, fontWeight: 800,
-            color: "rgba(255,255,255,0.88)", letterSpacing: -1, lineHeight: 1.15,
+            fontFamily: "'LEMONMILK', sans-serif", fontSize: 38, fontWeight: 800,
+            color: "var(--text)", letterSpacing: -1, lineHeight: 1.15,
           }}>
             Engineered for your wellbeing
           </h2>
@@ -245,8 +245,8 @@ export default function CTAPage({ onGetStarted, onBack }) {
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
               style={{
-                background: "radial-gradient(ellipse at 50% -10%, #0d0a2e 0%, #030308 60%)",
-                border: `1.5px solid ${hovered === i ? f.color + "40" : "rgba(255,255,255,0.06)"}`,
+                background: "var(--bg2)",
+                border: `1.5px solid ${hovered === i ? f.color + "40" : "rgba(0,0,0,0.07)"}`,
                 borderRadius: 18, padding: "26px 24px",
                 transition: "all 0.2s ease",
                 boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
@@ -257,10 +257,10 @@ export default function CTAPage({ onGetStarted, onBack }) {
                 fontSize: 10, letterSpacing: 2, fontWeight: 700,
                 color: f.color, marginBottom: 8,
               }}>
-                {f.stat} Â· {f.statLabel.toUpperCase()}
+                {f.stat} · {f.statLabel.toUpperCase()}
               </div>
               <h3 style={{
-                fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.88)",
+                fontSize: 16, fontWeight: 700, color: "var(--text)",
                 marginBottom: 8, letterSpacing: -0.3,
               }}>{f.title}</h3>
               <p style={{ fontSize: 12, color: "rgba(0,0,0,0.48)", lineHeight: 1.7 }}>{f.desc}</p>
@@ -269,15 +269,15 @@ export default function CTAPage({ onGetStarted, onBack }) {
         </div>
       </section>
 
-      {/* â”€â”€ How it works â”€â”€ */}
+      {/* ── How it works ── */}
       <section style={{ padding: "80px 80px" }}>
         <div style={{ textAlign: "center", marginBottom: 52 }}>
           <div style={{ fontSize: 10, letterSpacing: 4, color: "#60a5fa", fontWeight: 700, marginBottom: 14 }}>
             GET STARTED IN MINUTES
           </div>
           <h2 style={{
-            fontFamily: "'Syne', sans-serif", fontSize: 38, fontWeight: 800,
-            color: "rgba(255,255,255,0.88)", letterSpacing: -1,
+            fontFamily: "'LEMONMILK', sans-serif", fontSize: 38, fontWeight: 800,
+            color: "var(--text)", letterSpacing: -1,
           }}>4 steps to better health</h2>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, maxWidth: 900, margin: "0 auto" }}>
@@ -293,30 +293,30 @@ export default function CTAPage({ onGetStarted, onBack }) {
                 fontFamily: "'DM Mono', monospace", fontSize: 32, fontWeight: 700,
                 color: "rgba(249,115,22,0.18)", lineHeight: 1, marginBottom: 16,
               }}>{s.num}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.88)", marginBottom: 7 }}>{s.title}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.32)", lineHeight: 1.65 }}>{s.desc}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 7 }}>{s.title}</div>
+              <div style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.65 }}>{s.desc}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* â”€â”€ Bottom CTA â”€â”€ */}
+      {/* ── Bottom CTA ── */}
       <section style={{
         padding: "80px",
-        background: "linear-gradient(135deg, #0A0A0A 0%, #1a0d00 100%)",
+        background: "linear-gradient(135deg, var(--bg2) 0%, var(--bg3-solid) 100%)",
         textAlign: "center",
       }}>
         <div style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontSize: "clamp(32px, 4vw, 52px)",
-          fontWeight: 900, color: "#fff",
+          fontWeight: 900, color: "var(--text)",
           letterSpacing: -1.5, marginBottom: 20, lineHeight: 1.1,
         }}>
           Ready to understand <br />
-          <span style={{ color: "#60a5fa", fontStyle: "italic" }}>your own health?</span>
+          <span style={{ color: "var(--accent)", fontStyle: "italic" }}>your own health?</span>
         </div>
         <p style={{
-          fontSize: 15, color: "rgba(255,255,255,0.45)",
+          fontSize: 15, color: "var(--text2)",
           marginBottom: 38, lineHeight: 1.7,
         }}>
           Join thousands taking control. Private. Powerful. Personal.
@@ -333,7 +333,7 @@ export default function CTAPage({ onGetStarted, onBack }) {
           onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 14px 52px rgba(249,115,22,0.6)"; }}
           onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 8px 40px rgba(249,115,22,0.45)"; }}
         >
-          CREATE FREE ACCOUNT â†’
+          CREATE FREE ACCOUNT →
         </button>
       </section>
     </div>

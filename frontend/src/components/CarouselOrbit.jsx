@@ -1,10 +1,34 @@
-﻿import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export const ITEMS = [
-  { id: "fitness",     label: "Fitness",     img: "/fitness.jpg",     desc: "Track & train" },
-  { id: "medicines",   label: "Medicines",   img: "/medicines.jpg",   desc: "Drug safety" },
-  { id: "mood",        label: "Mood",        img: "/mood.jpg",        desc: "Emotion AI" },
-  { id: "consistency", label: "Consistency", img: "/consistency.jpg", desc: "Daily habits" },
+  {
+    id: "tray-vision",
+    label: "Tray Vision",
+    img: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80",
+    desc: "AI plate auditing",
+    color: "#60a5fa",
+  },
+  {
+    id: "drug-food",
+    label: "Drug-Food",
+    img: "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?auto=format&fit=crop&w=400&q=80",
+    desc: "Conflict detection",
+    color: "#a78bfa",
+  },
+  {
+    id: "compliance",
+    label: "Compliance",
+    img: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=400&q=80",
+    desc: "Predictive AI",
+    color: "#34d399",
+  },
+  {
+    id: "rag-pqc",
+    label: "RAG + PQC",
+    img: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=400&q=80",
+    desc: "Signed citations",
+    color: "#818cf8",
+  },
 ];
 
 const N       = ITEMS.length;  // 4
@@ -12,7 +36,7 @@ const R       = 148;           // orbit radius px
 const SIZE    = 430;           // container size
 const CX      = 215;           // horizontal centre
 const CY      = 238;           // shifted down so top item has room
-const MAIN_D  = 168;           // active image size  (3 Ã— SM_D)
+const MAIN_D  = 168;           // active image size  (3 × SM_D)
 const SM_D    = 56;            // secondary image size
 const SPD     = 0.013;         // deg per ms (~13 deg/sec)
 const FRONT   = 270;           // deg on circle = front (top, 12 o'clock)
@@ -49,7 +73,7 @@ export default function CarouselOrbit({ activeId, onItemClick, autoRotate = true
     if (!activeId) return;
     const idx = ITEMS.findIndex(it => it.id === activeId);
     if (idx < 0) return;
-    // Need current offset â€” read from state via functional setter trick
+    // Need current offset — read from state via functional setter trick
     setOffset(prev => {
       snapToIndex(idx, prev);
       return prev; // don't change yet, RAF will ease toward snapTarget
@@ -130,7 +154,7 @@ export default function CarouselOrbit({ activeId, onItemClick, autoRotate = true
               borderRadius: 12,
               overflow: "hidden",
               boxShadow: isMain
-                ? "0 0 48px rgba(249,115,22,0.52), 0 10px 32px rgba(0,0,0,0.16)"
+                ? `0 0 40px ${item.color}55, 0 8px 28px rgba(0,0,0,0.12)`
                 : "0 2px 10px rgba(0,0,0,0.09)",
               transition: "box-shadow 0.38s ease",
             }}>
@@ -161,7 +185,7 @@ export default function CarouselOrbit({ activeId, onItemClick, autoRotate = true
                   fontSize: 10,
                   fontWeight: 600,
                   letterSpacing: 2.5,
-                  color: "#60a5fa",
+                  color: item.color,
                   fontFamily: "'DM Mono', monospace",
                   textTransform: "uppercase",
                 }}>

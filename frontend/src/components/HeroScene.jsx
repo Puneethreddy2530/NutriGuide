@@ -8,39 +8,39 @@ gsap.registerPlugin(ScrollTrigger);
 // ── Section data ───────────────────────────────────────────────────────
 const SECTIONS = [
   {
-    id: "fitness",
-    eyebrow: "REAL-TIME BIOMETRICS",
-    title: "Your Body,\nAlways\nListening.",
+    id: "tray-vision",
+    eyebrow: "AI TRAY AUDITING",
+    title: "Zero-Click\nMeal\nAuditing.",
     description:
-      "Track heart rate, HRV, and stress in real-time. Our AI models flag anomalies before they become problems.",
-    ctaLabel: "EXPLORE FITNESS",
+      "EfficientNet + Gemini Vision identifies food on every tray and estimates consumption automatically. No manual logging. No missed meals.",
+    ctaLabel: "SEE TRAY VISION",
     color: "#60a5fa",
   },
   {
-    id: "medicines",
-    eyebrow: "DRUG INTERACTION GNN",
-    title: "Smart\nMedication\nSafety.",
+    id: "drug-food",
+    eyebrow: "DRUG-FOOD CONFLICT GNN",
+    title: "Silent\nGuardian\nAgainst Conflicts.",
     description:
-      "Graph Neural Networks map potential drug conflicts in milliseconds. A silent guardian for every prescription.",
-    ctaLabel: "CHECK INTERACTIONS",
+      "BioBERT-powered Graph Neural Network maps polypharmacy risks against each patient's diet in milliseconds. Every meal, every prescription — protected.",
+    ctaLabel: "VIEW INTERACTIONS",
     color: "#a78bfa",
   },
   {
-    id: "mood",
-    eyebrow: "EMOTION INTELLIGENCE",
-    title: "See What\nYou\nFeel.",
+    id: "compliance",
+    eyebrow: "COMPLIANCE INTELLIGENCE",
+    title: "Predict\nBefore\nIt Drops.",
     description:
-      "EfficientNet-powered facial emotion detection builds a real-time stress and mood heatmap over your day.",
-    ctaLabel: "SCAN MY MOOD",
+      "TFT-powered temporal forecasting alerts your dietitian team 24 hours before a patient's meal adherence deteriorates. Intervene early. Every time.",
+    ctaLabel: "OPEN DASHBOARD",
     color: "#4ade80",
   },
   {
-    id: "consistency",
-    eyebrow: "AI HEALTH JOURNAL",
-    title: "Write Once.\nLearn\nForever.",
+    id: "rag-pqc",
+    eyebrow: "POST-QUANTUM SIGNED RAG",
+    title: "Evidence\nYou Can\nTrust.",
     description:
-      "Your journal entries train a personal model that forecasts mood, suggests habits, and keeps your story private.",
-    ctaLabel: "START WRITING",
+      "Every clinical AI recommendation is cryptographically signed with FIPS 204 Dilithium3. Fully audit-ready. Quantum-resistant. Always verifiable.",
+    ctaLabel: "EXPLORE RAG + PQC",
     color: "#818cf8",
   },
 ];
@@ -59,73 +59,74 @@ function HeroIntro({ onEnterApp }) {
           fontFamily: "'DM Mono', monospace", fontWeight: 500,
           marginBottom: 20,
         }}>
-          ◎ INTELLIGENT HEALTH PLATFORM
+          CLINICAL NUTRITION AI · GKM HOSPITAL
         </div>
         <h1 style={{
           fontSize: "clamp(44px, 6vw, 88px)",
-          fontFamily: "'Syne', sans-serif",
-          fontWeight: 800,
+          fontFamily: "'LEMONMILK', sans-serif",
+          fontWeight: 700,
           lineHeight: 0.95,
-          color: "rgba(255,255,255,0.92)",
-          letterSpacing: -2,
+          color: "var(--text)",
+          letterSpacing: 1,
           marginBottom: 28,
         }}>
-          YOUR HEALTH,<br />
-          <span style={{ color: "#60a5fa" }}>REIMAGINED.</span>
+          CLINICAL NUTRITION,<br />
+          <span style={{ color: "var(--accent)" }}>REIMAGINED.</span>
         </h1>
         <p style={{
-          fontSize: 12, color: "rgba(255,255,255,0.35)", maxWidth: 440, lineHeight: 1.8,
+          fontSize: 12, color: "var(--text2)", maxWidth: 440, lineHeight: 1.8,
           fontFamily: "'DM Mono', monospace", marginBottom: 40,
         }}>
-          Three AI models. Real-time emotion. Drug safety. Predictive health journaling.
-          All in one beautifully private platform.
+          AI tray auditing. Drug-food conflict detection. Predictive compliance.
+          PQC-signed clinical guidance. Built for India's frontline dietitians.
         </p>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <button
             onClick={onEnterApp}
             style={{
               padding: "13px 34px",
-              background: "linear-gradient(135deg, rgba(96,165,250,0.25), rgba(167,139,250,0.25))",
-              border: "1px solid rgba(96,165,250,0.4)", borderRadius: 8,
-              color: "#60a5fa",
+              background: "linear-gradient(135deg, rgba(8,145,178,0.15), rgba(124,58,237,0.15))",
+              border: "1px solid rgba(8,145,178,0.4)", borderRadius: 8,
+              color: "var(--accent)",
               fontFamily: "'DM Mono', monospace",
               fontSize: 10, letterSpacing: 3, fontWeight: 500,
               cursor: "pointer",
               transition: "all 0.2s",
-              boxShadow: "0 0 20px rgba(96,165,250,0.15)",
+              boxShadow: "0 0 20px rgba(8,145,178,0.1)",
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = "linear-gradient(135deg, rgba(96,165,250,0.35), rgba(167,139,250,0.35))";
-              e.currentTarget.style.boxShadow = "0 0 32px rgba(96,165,250,0.35)";
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(8,145,178,0.25), rgba(124,58,237,0.25))";
+              e.currentTarget.style.boxShadow = "0 0 32px rgba(8,145,178,0.25)";
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = "linear-gradient(135deg, rgba(96,165,250,0.25), rgba(167,139,250,0.25))";
-              e.currentTarget.style.boxShadow = "0 0 20px rgba(96,165,250,0.15)";
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(8,145,178,0.15), rgba(124,58,237,0.15))";
+              e.currentTarget.style.boxShadow = "0 0 20px rgba(8,145,178,0.1)";
             }}
           >
-            GET STARTED →
+            ENTER COMMAND CENTER
           </button>
           <span style={{
-            fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: 2,
+            fontSize: 10, color: "var(--text3)", letterSpacing: 2,
             fontFamily: "'DM Mono', monospace",
           }}>
-            Scroll to explore ↓
+            Scroll to explore
           </span>
         </div>
         {/* Stats row */}
         <div style={{ display: "flex", gap: 32, marginTop: 56 }}>
           {[
-            { v: "3", l: "AI MODELS" },
-            { v: "100%", l: "PRIVATE" },
-            { v: "∞", l: "INSIGHTS" },
+            { v: "4",        l: "AI MODELS" },
+            { v: "9",        l: "LANGUAGES" },
+            { v: "FIPS 204", l: "PQC SIGNED" },
           ].map(s => (
             <div key={s.l}>
               <div style={{
-                fontSize: 28, fontWeight: 800, color: "rgba(255,255,255,0.9)",
-                fontFamily: "'Syne', sans-serif", letterSpacing: -1,
+                fontSize: s.v.length > 2 ? 18 : 32, fontWeight: 800,
+                color: "var(--text)",
+                fontFamily: "'JetBrains Mono', monospace", letterSpacing: -1,
               }}>{s.v}</div>
               <div style={{
-                fontSize: 8, color: "rgba(255,255,255,0.25)", letterSpacing: 3, marginTop: 4,
+                fontSize: 8, color: "var(--text3)", letterSpacing: 2, marginTop: 2,
                 fontFamily: "'DM Mono', monospace",
               }}>{s.l}</div>
             </div>
@@ -207,7 +208,7 @@ export default function HeroScene({
       <div ref={stickyRef} style={{
         position: "sticky", top: 0, height: "100vh",
         overflow: "hidden",
-        background: "radial-gradient(ellipse at 30% 50%, #0d0a2e 0%, #030308 65%)",
+        background: "var(--bg)",
       }}>
         {/* Ambient background */}
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
@@ -265,15 +266,15 @@ export default function HeroScene({
                 </div>
                 <h2 style={{
                   fontSize: "clamp(38px, 5vw, 72px)",
-                  fontFamily: "'Syne', sans-serif",
-                  fontWeight: 800, lineHeight: 0.95,
-                  color: "rgba(255,255,255,0.92)", letterSpacing: -1.5,
+                  fontFamily: "'LEMONMILK', sans-serif",
+                  fontWeight: 700, lineHeight: 0.95,
+                  color: "var(--text)", letterSpacing: 0.5,
                   marginBottom: 24, whiteSpace: "pre-line",
                 }}>
                   {sec.title}
                 </h2>
                 <p style={{
-                  fontSize: 12, color: "rgba(255,255,255,0.35)", maxWidth: 400, lineHeight: 1.8,
+                  fontSize: 12, color: "var(--text2)", maxWidth: 400, lineHeight: 1.8,
                   fontFamily: "'DM Mono', monospace", marginBottom: 32,
                 }}>
                   {sec.description}
@@ -305,7 +306,7 @@ export default function HeroScene({
                   {SECTIONS.map((_, j) => (
                     <div key={j} style={{
                       width: j === i ? 24 : 6, height: 4, borderRadius: 2,
-                      background: j === i ? sec.color : "rgba(255,255,255,0.1)",
+                      background: j === i ? sec.color : "rgba(0,0,0,0.12)",
                       transition: "width 0.3s, background 0.3s",
                     }} />
                   ))}
@@ -372,7 +373,7 @@ function ScrollProgressLine() {
   return (
     <div style={{
       position: "absolute", bottom: 0, left: 0, right: 0,
-      height: 2, background: "rgba(255,255,255,0.05)",
+      height: 2, background: "rgba(0,0,0,0.07)",
     }}>
       <div style={{
         height: "100%", width: `${progress}%`,

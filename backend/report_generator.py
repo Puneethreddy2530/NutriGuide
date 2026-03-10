@@ -1,7 +1,7 @@
 """
 report_generator.py
 ══════════════════════════════════════════════════════════════════
-CAP³S Weekly Nutrition PDF Report Generator
+NutriGuide Weekly Nutrition PDF Report Generator
 Stolen from: NeoPulse report_generator.py (patient wellness PDF)
 Change: Clinical nutrition macros, compliance chart, PQC signature footer
 
@@ -24,7 +24,7 @@ try:
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from reportlab.platypus import (
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        HRFlowable, KeepTogether
+        HRFlowable, KeepTogether, Image
     )
     from reportlab.graphics.shapes import Drawing, Rect, String, Line
     from reportlab.graphics.charts.barcharts import VerticalBarChart
@@ -57,7 +57,7 @@ def _compliance_colour(pct: float):
     return RED
 
 
-def _mini_bar_chart(daily_data: list, calorie_target: int, width: float = 460, height: float = 110) -> Drawing:
+def _mini_bar_chart(daily_data: list, calorie_target: int, width: float = 460, height: float = 150) -> Drawing:
     """
     Draw a minimal vertical bar chart of daily calorie plan vs target.
     daily_data: list of {"day": int, "calories": float}
@@ -69,14 +69,17 @@ def _mini_bar_chart(daily_data: list, calorie_target: int, width: float = 460, h
                      fontSize=9, fillColor=TEXT_DIM))
         return d
 
-    bar_count  = len(daily_data)
-    bar_width  = min(40, (width - 60) / bar_count - 4)
-    x_start    = 50
-    chart_h    = height - 20
-    max_cal    = max(max(r.get("calories", 0) for r in daily_data), calorie_target, 1)
+    bar_count     = len(daily_data)
+    bar_width     = min(40, (width - 60) / bar_count - 4)
+    x_start       = 50
+    bottom_margin = 20   # room for D-label text below bars
+    top_margin    = 16   # room for calorie value text above bars
+    chart_h       = height - bottom_margin - top_margin
+    y_base        = bottom_margin  # bars sit above this baseline
+    max_cal       = max(max(r.get("calories", 0) for r in daily_data), calorie_target, 1)
 
-    # Target line
-    target_y = (calorie_target / max_cal) * chart_h
+    # Target line — positioned within the chart area
+    target_y = y_base + (calorie_target / max_cal) * chart_h
     d.add(Line(x_start, target_y, width - 10, target_y,
                strokeColor=AMBER, strokeWidth=1, strokeDashArray=[4, 3]))
     d.add(String(x_start - 2, target_y + 2, f"{calorie_target}", fontSize=7,
@@ -88,10 +91,13 @@ def _mini_bar_chart(daily_data: list, calorie_target: int, width: float = 460, h
         bar_h = max(2, (cal / max_cal) * chart_h)
         x = x_start + i * ((width - 60) / bar_count) + 2
         col = _compliance_colour((cal / calorie_target * 100) if calorie_target else 0)
-        d.add(Rect(x, 0, bar_width, bar_h, fillColor=col, strokeColor=None))
-        d.add(String(x + bar_width / 2, bar_h + 2, str(int(cal)), fontSize=6,
+        # Bar drawn from y_base upward so it stays inside the drawing
+        d.add(Rect(x, y_base, bar_width, bar_h, fillColor=col, strokeColor=None))
+        # Calorie value label above bar (within drawing bounds)
+        d.add(String(x + bar_width / 2, y_base + bar_h + 3, str(int(cal)), fontSize=6,
                      fillColor=TEXT_DIM, textAnchor="middle"))
-        d.add(String(x + bar_width / 2, -10, f"D{row['day']}", fontSize=6,
+        # Day label below bar baseline (inside drawing bounds)
+        d.add(String(x + bar_width / 2, 5, f"D{row['day']}", fontSize=6,
                      fillColor=TEXT_DIM, textAnchor="middle"))
 
     return d
@@ -127,7 +133,7 @@ async def build_weekly_nutrition_report(
     try:
         stats = con.execute("""
             SELECT consumption_level, COUNT(*) FROM meal_logs
-            WHERE patient_id=? AND log_date BETWEEN ? AND ?
+            WHERE patient_id=? AND log_date BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
             GROUP BY consumption_level
         """, [patient_id, _start, _end]).fetchall()
     except Exception:
@@ -149,7 +155,7 @@ async def build_weekly_nutrition_report(
     compliance = round((fully / total * 100) if total > 0 else 0.0, 1)
     avg_cals  = round(sum(r[1] or 0 for r in daily) / max(len(daily), 1), 1)
 
-    daily_data = [{"day": r[0], "calories": r[1] or 0, "protein_g": r[2] or 0} for r in daily]
+    daily_data = [{"day": r[0], "calories": r[1] or 0, "protein_g": r[2] or 0, "sodium_mg": r[3] or 0, "potassium_mg": r[4] or 0} for r in daily]
 
     # PQC signature
     sig_str = ""
@@ -189,8 +195,16 @@ async def build_weekly_nutrition_report(
     story = []
 
     # ── Header bar ────────────────────────────────────────────────
+    import os as _os
+    _logo_path = _os.path.join(_os.path.dirname(__file__), "logo.jpg")
+    _logo_cell = []
+    if _os.path.exists(_logo_path):
+        _logo_img = Image(_logo_path, width=28, height=28)
+        _logo_cell = [[_logo_img, Paragraph("NutriGuide Clinical Nutrition Care Agent", sTitle)]]
+    else:
+        _logo_cell = [[Paragraph("NutriGuide Clinical Nutrition Care Agent", sTitle)]]
     header_data = [[
-        Paragraph("🏥 CAP³S Clinical Nutrition Care Agent", sTitle),
+        Table(_logo_cell, colWidths=[36, None]) if _os.path.exists(_logo_path) else Paragraph("NutriGuide Clinical Nutrition Care Agent", sTitle),
         Paragraph(f"G. Kathir Memorial Hospital<br/>Report Date: {date.today()}", sRight),
     ]]
     header_tbl = Table(header_data, colWidths=["65%", "35%"])
@@ -234,48 +248,66 @@ async def build_weekly_nutrition_report(
         ("ROWBACKGROUNDS",(0, 0), (-1, -1), [CARD_BG, DARK_BG]),
     ]))
     story.append(pid_tbl)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 18))
 
     # ── Compliance KPI row ────────────────────────────────────────
     story.append(Paragraph("WEEKLY COMPLIANCE SUMMARY", sH3))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 6))
 
     comp_colour = _compliance_colour(compliance)
+    # Paragraph styles for KPI values — explicit leading avoids ReportLab defaulting to 0
+    _kpi_val  = S("kpi",  fontSize=22, leading=26, fontName="Helvetica-Bold", textColor=TEAL,     alignment=TA_CENTER)
+    _kpi2_val = S("kpi2", fontSize=18, leading=22, fontName="Helvetica-Bold", textColor=GREEN,    alignment=TA_CENTER)
+    _kpi3_val = S("kpi3", fontSize=18, leading=22, fontName="Helvetica-Bold", textColor=AMBER,    alignment=TA_CENTER)
+    _kpi4_val = S("kpi4", fontSize=18, leading=22, fontName="Helvetica-Bold", textColor=RED,      alignment=TA_CENTER)
+    _kpi5_val = S("kpi5", fontSize=18, leading=22, fontName="Helvetica-Bold", textColor=TEXT_DIM, alignment=TA_CENTER)
+    _kpi_lbl  = S("kpiL", fontSize=8,  leading=11, fontName="Helvetica",      textColor=TEXT_DIM, alignment=TA_CENTER)
+
     kpi_data = [[
-        Paragraph(f"<font color='#{TEAL.hexval()[2:]}'>{compliance}%</font>", S("kpi", fontSize=28, fontName="Helvetica-Bold", textColor=TEAL, alignment=TA_CENTER)),
-        Paragraph(f"<font color='#2ECC71'>{fully}</font>", S("kpi2", fontSize=22, fontName="Helvetica-Bold", textColor=GREEN, alignment=TA_CENTER)),
-        Paragraph(f"<font color='#F0A500'>{partially}</font>", S("kpi3", fontSize=22, fontName="Helvetica-Bold", textColor=AMBER, alignment=TA_CENTER)),
-        Paragraph(f"<font color='#FF4C6A'>{refused}</font>", S("kpi4", fontSize=22, fontName="Helvetica-Bold", textColor=RED, alignment=TA_CENTER)),
-        Paragraph(f"<font color='#8B949E'>{round(avg_cals)}</font>", S("kpi5", fontSize=22, fontName="Helvetica-Bold", textColor=TEXT_DIM, alignment=TA_CENTER)),
+        Paragraph(f"{compliance}%",   _kpi_val),
+        Paragraph(str(fully),          _kpi2_val),
+        Paragraph(str(partially),      _kpi3_val),
+        Paragraph(str(refused),        _kpi4_val),
+        Paragraph(str(round(avg_cals)),_kpi5_val),
     ]]
     kpi_labels = [[
-        Paragraph("Overall Compliance", sCaption),
-        Paragraph("Ate Fully", sCaption),
-        Paragraph("Partially Eaten", sCaption),
-        Paragraph("Refused", sCaption),
-        Paragraph("Avg Daily kcal", sCaption),
+        Paragraph("Overall Compliance", _kpi_lbl),
+        Paragraph("Ate Fully",           _kpi_lbl),
+        Paragraph("Partially Eaten",     _kpi_lbl),
+        Paragraph("Refused",             _kpi_lbl),
+        Paragraph("Avg Daily kcal",      _kpi_lbl),
     ]]
 
-    kpi_tbl = Table(kpi_data + kpi_labels, colWidths=["20%"] * 5)
+    kpi_tbl = Table(
+        kpi_data + kpi_labels,
+        colWidths=["20%"] * 5,
+        rowHeights=[42, 24],   # explicit heights: tall enough for value row, compact label row
+    )
     kpi_tbl.setStyle(TableStyle([
         ("BACKGROUND",    (0, 0), (-1, -1), CARD_BG),
         ("GRID",          (0, 0), (-1, -1), 0.3, BORDER),
-        ("TOPPADDING",    (0, 0), (-1, 0), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
-        ("TOPPADDING",    (0, 1), (-1, 1), 2),
-        ("BOTTOMPADDING", (0, 1), (-1, 1), 10),
+        ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN",        (0, 0), (-1, 0),  "MIDDLE"),
+        ("VALIGN",        (0, 1), (-1, 1),  "TOP"),
+        ("TOPPADDING",    (0, 0), (-1, 0),  10),
+        ("BOTTOMPADDING", (0, 0), (-1, 0),  6),
+        ("TOPPADDING",    (0, 1), (-1, 1),  4),
+        ("BOTTOMPADDING", (0, 1), (-1, 1),  10),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
     ]))
     story.append(kpi_tbl)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 18))
 
     # ── Daily calorie chart ───────────────────────────────────────
     story.append(Paragraph("DAILY CALORIE PLAN vs TARGET", sH3))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 6))
 
-    chart_drawing = _mini_bar_chart(daily_data, p.get("calorie_target", 1800), width=460, height=100)
+    chart_drawing = _mini_bar_chart(daily_data, p.get("calorie_target", 1800), width=460, height=150)
     story.append(chart_drawing)
+    story.append(Spacer(1, 8))   # gap so legend sits clearly below the chart
     story.append(Paragraph(f"⬛ Bars = planned calories per day    ─── Amber dashed = {p.get('calorie_target', 1800)} kcal target", sCaption))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 18))
 
     # ── Daily breakdown table ─────────────────────────────────────
     if daily_data:
@@ -301,14 +333,16 @@ async def build_weekly_nutrition_report(
                 Paragraph(str(int(cal)), td_style),
                 Paragraph(f"<font color='{colour_hex}'>{vs_pct}%</font>", S("td_c", fontSize=8, fontName="Helvetica", alignment=TA_CENTER)),
                 Paragraph(str(round(row.get("protein_g", 0), 1)), td_style),
-                Paragraph("—", td_style),
+                Paragraph(str(int(row.get("sodium_mg", 0))), td_style),
             ])
+        avg_protein = round(sum(r.get("protein_g", 0) for r in daily_data) / max(len(daily_data), 1), 1)
+        avg_sodium = int(sum(r.get("sodium_mg", 0) for r in daily_data) / max(len(daily_data), 1))
         tbl_data.append([
             Paragraph("AVG", th_style),
             Paragraph(str(int(avg_cals)), th_style),
             Paragraph(f"{round(avg_cals / p.get('calorie_target', 1800) * 100, 1)}%", th_style),
-            Paragraph("—", th_style),
-            Paragraph("—", th_style),
+            Paragraph(str(avg_protein), th_style),
+            Paragraph(str(avg_sodium), th_style),
         ])
 
         daily_tbl = Table(tbl_data, colWidths=["10%", "22%", "18%", "22%", "28%"])
@@ -321,22 +355,22 @@ async def build_weekly_nutrition_report(
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]))
         story.append(daily_tbl)
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 18))
 
     # ── Restrictions block ────────────────────────────────────────
     restrictions = p.get("restrictions", [])
     if restrictions:
         story.append(Paragraph("ACTIVE DIETARY RESTRICTIONS", sH3))
-        story.append(Spacer(1, 4))
+        story.append(Spacer(1, 6))
         r_text = "   •   ".join(r.replace("_", " ").title() for r in restrictions)
         story.append(Paragraph(r_text, sBody))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 12))
 
     # ── Medications ───────────────────────────────────────────────
     medications = p.get("medications", [])
     if medications:
         story.append(Paragraph("CURRENT MEDICATIONS (for food-drug interaction awareness)", sH3))
-        story.append(Spacer(1, 4))
+        story.append(Spacer(1, 6))
         med_data = [[
             Paragraph("Medication", S("mth", fontSize=8, fontName="Helvetica-Bold", textColor=TEAL)),
             Paragraph("Dose", S("mth", fontSize=8, fontName="Helvetica-Bold", textColor=TEAL)),
@@ -360,7 +394,7 @@ async def build_weekly_nutrition_report(
             ("LEFTPADDING",   (0, 0), (-1, -1), 6),
         ]))
         story.append(med_tbl)
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 18))
 
     # ── Clinical flags ────────────────────────────────────────────
     flags = []

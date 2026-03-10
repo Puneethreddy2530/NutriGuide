@@ -13,9 +13,22 @@
 import { useState, useEffect } from 'react'
 
 const STATUS_STYLES = {
-  CRITICAL: { bg: 'rgba(239,68,68,0.08)',   border: '#dc2626', text: '#dc2626', icon: '🔴', label: 'CRITICAL — Order Immediately' },
-  LOW:      { bg: 'rgba(234,88,12,0.08)',   border: '#ea580c', text: '#ea580c', icon: '🟠', label: 'LOW — Order Within 48h' },
-  OK:       { bg: 'rgba(22,163,74,0.06)',   border: '#16a34a', text: '#16a34a', icon: '🟢', label: 'Adequate Stock' },
+  CRITICAL: { bg: 'rgba(239,68,68,0.08)',   border: '#dc2626', text: '#dc2626', icon: '●', label: 'CRITICAL — Order Immediately' },
+  LOW:      { bg: 'rgba(234,88,12,0.08)',   border: '#ea580c', text: '#ea580c', icon: '○', label: 'LOW — Order Within 48h' },
+  OK:       { bg: 'rgba(22,163,74,0.06)',   border: '#16a34a', text: '#16a34a', icon: '✓', label: 'Adequate Stock' },
+}
+
+function exportProcurement(procurement_order) {
+  const rows = ['Ingredient,Quantity (KG),Urgency', ...procurement_order.map(o => `"${o.ingredient}",${o.order_kg},${o.urgency}`)]
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `procurement-order-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export default function KitchenBurnRate({ forecastDays = 3 }) {
@@ -56,7 +69,7 @@ export default function KitchenBurnRate({ forecastDays = 3 }) {
 
   if (loading) return (
     <div style={s.card}>
-      <div style={s.header}><span>📦</span> Kitchen Burn-Rate <span style={s.badge('#1a2010','#86efac')}>DuckDB OLAP</span></div>
+      <div style={s.header}><span>⊞</span> Kitchen Burn-Rate <span style={s.badge('#1a2010','#86efac')}>DuckDB OLAP</span></div>
       <div style={{ color: '#475569', fontSize: 13, padding: '24px 0', textAlign: 'center' }}>Running OLAP projection...</div>
     </div>
   )
@@ -68,7 +81,7 @@ export default function KitchenBurnRate({ forecastDays = 3 }) {
   return (
     <div style={s.card}>
       <div style={s.header}>
-        <span>📦</span>
+        <span>⊞</span>
         <span>Kitchen Inventory Forecast</span>
         <span style={s.badge('#1a2010','#86efac')}>AgriSahayak DuckDB OLAP</span>
         <span style={s.badge('#1e1028','#a78bfa')}>{forecastDays}-Day Projection</span>
@@ -135,7 +148,7 @@ export default function KitchenBurnRate({ forecastDays = 3 }) {
         </div>
       ) : (
         <div style={{ background: '#052e16', border: '1px solid #16a34a', borderRadius: 8, padding: 14, textAlign: 'center', color: '#4ade80', fontSize: 13 }}>
-          ✅ All ingredients adequately stocked for {forecastDays}-day forecast
+          ✓ All ingredients adequately stocked for {forecastDays}-day forecast
         </div>
       )}
 
@@ -144,18 +157,18 @@ export default function KitchenBurnRate({ forecastDays = 3 }) {
         <div style={{ marginTop: 14 }}>
           <div style={{ color: '#64748b', fontSize: 11, fontWeight: 600, marginBottom: 8 }}>GENERATED PROCUREMENT ORDER</div>
           <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569', fontSize: 10, fontWeight: 600, marginBottom: 8, borderBottom: '1px solid #1e293b', paddingBottom: 6 }}>
-              <span>INGREDIENT</span><span>QTY (KG)</span><span>URGENCY</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 96px', color: '#475569', fontSize: 10, fontWeight: 600, marginBottom: 8, borderBottom: '1px solid #1e293b', paddingBottom: 6, gap: '0 8px' }}>
+              <span>INGREDIENT</span><span style={{ textAlign: 'right' }}>QTY (KG)</span><span style={{ textAlign: 'right' }}>URGENCY</span>
             </div>
             {procurement_order.map((o, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 0', borderBottom: '1px solid #0f172a' }}>
-                <span>{o.ingredient}</span>
-                <span style={{ fontWeight: 700 }}>{o.order_kg}kg</span>
-                <span style={{ color: o.urgency === 'IMMEDIATE' ? '#f87171' : '#f59e0b', fontWeight: 700 }}>{o.urgency}</span>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 96px', fontSize: 12, color: '#cbd5e1', padding: '4px 0', borderBottom: '1px solid #1e293b', gap: '0 8px', alignItems: 'center' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.ingredient}</span>
+                <span style={{ fontWeight: 700, textAlign: 'right' }}>{o.order_kg}kg</span>
+                <span style={{ color: o.urgency === 'IMMEDIATE' ? '#f87171' : '#f59e0b', fontWeight: 700, textAlign: 'right' }}>{o.urgency}</span>
               </div>
             ))}
-            <button style={{ marginTop: 10, background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 6, padding: '6px 14px', color: '#93c5fd', fontSize: 12, cursor: 'pointer', fontWeight: 600, width: '100%' }}>
-              📤 Export to Procurement System
+            <button onClick={() => exportProcurement(procurement_order)} style={{ marginTop: 10, background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 6, padding: '6px 14px', color: '#93c5fd', fontSize: 12, cursor: 'pointer', fontWeight: 600, width: '100%' }}>
+              ↑ Export to Procurement System
             </button>
           </div>
         </div>

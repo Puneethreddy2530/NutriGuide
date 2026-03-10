@@ -24,6 +24,7 @@ CONSTRAINT HANDLING:
   - Portion sizes capped at realistic clinical amounts (50–200g)
 """
 
+import asyncio
 import json
 import logging
 import random
@@ -527,6 +528,8 @@ async def generate_hybrid_meal_plan(
     weekly_cal = 0
     prev_day_grains: Optional[Dict[str, Set[str]]] = None
 
+    # ── Step 1: run knapsack for every day (CPU-only, fast) ─────────────────
+    all_day_data = []
     for day in range(1, duration_days + 1):
         day_data = optimizer.optimise_day(
             patient_restrictions=patient["restrictions"],
@@ -536,16 +539,40 @@ async def generate_hybrid_meal_plan(
             sodium_limit_mg=patient.get("sodium_limit_mg", 2300),
             prev_day_grains=prev_day_grains,
         )
-        # Carry grain selections forward so the next day can exclude them
         prev_day_grains = day_data.pop("_day_grains", None)
+        all_day_data.append((day, day_data))
 
+    # ── Step 2: name all meals concurrently (GPU/Azure parallel) ────────────
+    # Build a flat list of (day, meal_time, meal_result) for asyncio.gather
+    naming_inputs = [
+        (day, meal_time, meal_result)
+        for day, day_data in all_day_data
+        for meal_time, meal_result in day_data["meals"].items()
+    ]
+    naming_results = await asyncio.gather(
+        *[
+            name_meal_with_ai(meal_result, patient, meal_time, day, gemini_client)
+            for day, meal_time, meal_result in naming_inputs
+        ],
+        return_exceptions=True,
+    )
+
+    # ── Step 3: assemble final plan ──────────────────────────────────────────
+    naming_iter = iter(zip(naming_inputs, naming_results))
+
+    for day, day_data in all_day_data:
         day_meals = {}
         day_meal_list = []  # flat list for DB insert
 
         for meal_time, meal_result in day_data["meals"].items():
-            naming = await name_meal_with_ai(
-                meal_result, patient, meal_time, day, gemini_client
-            )
+            (_, _, _), naming = next(naming_iter)
+            if isinstance(naming, Exception):
+                logger.warning(f"AI naming failed for day {day} {meal_time}: {naming}")
+                primary = meal_result["ingredients"][0]["name"] if meal_result["ingredients"] else "Clinical Meal"
+                naming = {
+                    "dish_name": f"{primary} {meal_time.capitalize()}",
+                    "prep_notes": "Prepare as per standard clinical kitchen protocol.",
+                }
 
             meal_entry = {
                 "dish_name":    naming["dish_name"],
@@ -578,11 +605,12 @@ async def generate_hybrid_meal_plan(
         "duration_days":       duration_days,
         "days":                days_result,
         "weekly_avg_calories": round(weekly_cal / duration_days, 0),
-        "generation_method":   "knapsack_optimized + azure_gpt4o_naming",
+        "generation_method":   "knapsack_optimized + azure_gpt4o_naming (parallel)",
         "clinical_notes":      (
             f"Meal plan generated using 0/1 Knapsack optimization on "
             f"{len(inventory)} kitchen inventory items. "
             f"Calorie targets hit within ±5% per meal. "
-            f"Restrictions enforced deterministically before LLM invocation."
+            f"Restrictions enforced deterministically before LLM invocation. "
+            f"All {duration_days * 4} AI naming calls executed concurrently for speed."
         ),
     }

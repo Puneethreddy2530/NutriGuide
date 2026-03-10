@@ -1,7 +1,7 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 /**
- * MedicationPage.jsx â€” NeoPulse Medication Manager
+ * MedicationPage.jsx — NeoPulse Medication Manager
  *
  * Aesthetic: "Clinical Precision"
  *   Stark white-on-midnight with surgical precision.
@@ -10,7 +10,7 @@
  *   attention. Feels like a pharmacy dispensing system
  *   crossed with a Braun product.
  *
- * Fonts: Syne (bold geometric display) + DM Mono (data)
+ * Fonts: LEMONMILK (bold geometric display) + DM Mono (data)
  * Palette: Near-black #08090c base, clean white text,
  *          category-coded accent colors per medication
  *
@@ -24,7 +24,7 @@
  *   - MindGuide integration badge
  */
 
-const API = import.meta?.env?.VITE_API_URL ?? "";   // empty = relative â†’ Vite proxy â†’ :8020
+const API = import.meta?.env?.VITE_API_URL ?? "";   // empty = relative → Vite proxy → :8020
 
 const CATEGORIES = [
   { key: "antidepressant", label: "Antidepressant", color: "#7ecec4" },
@@ -43,7 +43,7 @@ const FREQUENCIES = [
   { key: "weekly", label: "Weekly", times: ["08:00"] },
 ];
 
-// â”€â”€ SVG Adherence Ring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SVG Adherence Ring ────────────────────────────────────────────
 function AdherenceRing({ pct, color, size = 56 }) {
   const r = (size - 6) / 2;
   const circ = 2 * Math.PI * r;
@@ -74,7 +74,7 @@ function AdherenceRing({ pct, color, size = 56 }) {
   );
 }
 
-// â”€â”€ Pill Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Pill Card ─────────────────────────────────────────────────────
 function PillCard({ med, adherence, onMarkTaken, onMarkMissed, onEdit }) {
   const status = med.status || "pending";
   const cat = CATEGORIES.find(c => c.key === med.category) || CATEGORIES[5];
@@ -121,9 +121,9 @@ function PillCard({ med, adherence, onMarkTaken, onMarkMissed, onEdit }) {
             fontSize: 11, color: "rgba(255,255,255,0.32)",
             fontFamily: "'DM Mono', monospace"
           }}>
-            {med.dosage && `${med.dosage} Â· `}
+            {med.dosage && `${med.dosage} · `}
             {FREQUENCIES.find(f => f.key === med.frequency)?.label || med.frequency}
-            {med.times?.length > 0 && ` Â· ${med.times.join(", ")}`}
+            {med.times?.length > 0 && ` · ${med.times.join(", ")}`}
           </div>
         </div>
 
@@ -140,7 +140,7 @@ function PillCard({ med, adherence, onMarkTaken, onMarkMissed, onEdit }) {
           fontFamily: "'DM Mono', monospace",
           fontStyle: "italic"
         }}>
-          â—Ž {med.instructions}
+          ◎ {med.instructions}
         </div>
       )}
 
@@ -154,7 +154,7 @@ function PillCard({ med, adherence, onMarkTaken, onMarkMissed, onEdit }) {
             borderRadius: 20, fontSize: 10,
             color: "#22c55e", fontFamily: "'DM Mono', monospace",
           }}>
-            âœ“ TAKEN {med.taken_at ? new Date(med.taken_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+            ✓ TAKEN {med.taken_at ? new Date(med.taken_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
           </div>
         ) : status === "missed" ? (
           <>
@@ -165,7 +165,7 @@ function PillCard({ med, adherence, onMarkTaken, onMarkMissed, onEdit }) {
               borderRadius: 20, fontSize: 10,
               color: "#f87171", fontFamily: "'DM Mono', monospace",
             }}>
-              âœ— MISSED
+              ✗ MISSED
             </div>
             <button onClick={() => onMarkTaken(med.medication_id)} style={{
               padding: "5px 12px",
@@ -190,7 +190,7 @@ function PillCard({ med, adherence, onMarkTaken, onMarkMissed, onEdit }) {
               letterSpacing: 1, fontWeight: 600,
               transition: "all 0.2s",
             }}>
-              âœ“ MARK TAKEN
+              ✓ MARK TAKEN
             </button>
             <button onClick={() => onMarkMissed(med.medication_id)} style={{
               padding: "8px 14px",
@@ -211,14 +211,14 @@ function PillCard({ med, adherence, onMarkTaken, onMarkMissed, onEdit }) {
           borderRadius: 8, cursor: "pointer",
           color: "rgba(255,255,255,0.28)", fontSize: 10,
         }}>
-          â‹¯
+          ⋯
         </button>
       </div>
     </div>
   );
 }
 
-// â”€â”€ Interaction Alert â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Interaction Alert ─────────────────────────────────────────────
 function InteractionAlert({ alert }) {
   const [expanded, setExpanded] = useState(false);
   const severityColor = alert.severity === 3 ? "#ef4444"
@@ -242,7 +242,7 @@ function InteractionAlert({ alert }) {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ color: severityColor, fontSize: 14 }}>
-            {alert.severity === 3 ? "âš " : "â–³"}
+            {alert.severity === 3 ? "⚠" : "△"}
           </span>
           <span style={{
             fontSize: 12, color: severityColor, fontWeight: 600,
@@ -271,7 +271,7 @@ function InteractionAlert({ alert }) {
           {alert.description}
           {alert.severity >= 2 && (
             <div style={{ marginTop: 6, color: severityColor, fontSize: 10 }}>
-              â†’ Consult your prescriber or pharmacist before continuing.
+              → Consult your prescriber or pharmacist before continuing.
             </div>
           )}
         </div>
@@ -280,7 +280,7 @@ function InteractionAlert({ alert }) {
   );
 }
 
-// â”€â”€ Add Medication Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Add Medication Modal ──────────────────────────────────────────
 function AddMedModal({ onSave, onClose, editing }) {
   const [form, setForm] = useState(editing || {
     name: "", generic_name: "", dosage: "",
@@ -311,7 +311,7 @@ function AddMedModal({ onSave, onClose, editing }) {
       }}>
         <div style={{
           fontSize: 18, color: "rgba(255,255,255,0.88)",
-          fontFamily: "'Syne', sans-serif", fontWeight: 800,
+          fontFamily: "'LEMONMILK', sans-serif", fontWeight: 800,
           marginBottom: 20
         }}>
           {editing ? "Edit Medication" : "Add Medication"}
@@ -567,7 +567,7 @@ export default function MedicationPage({ token }) {
       color: "rgba(255,255,255,0.88)",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
         @keyframes pulse  { 0%,100%{opacity:0.5} 50%{opacity:1} }
         * { box-sizing: border-box; }
@@ -584,7 +584,7 @@ export default function MedicationPage({ token }) {
         />
       )}
 
-      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Header ────────────────────────────────────────────── */}
       <div style={{
         padding: "16px 28px",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -595,7 +595,7 @@ export default function MedicationPage({ token }) {
         <div>
           <div style={{
             fontSize: 22, color: "rgba(255,255,255,0.88)",
-            fontFamily: "'Syne', sans-serif", fontWeight: 800,
+            fontFamily: "'LEMONMILK', sans-serif", fontWeight: 800,
             letterSpacing: "-0.5px"
           }}>
             Medications
@@ -604,7 +604,7 @@ export default function MedicationPage({ token }) {
             fontSize: 9, color: "rgba(255,255,255,0.3)",
             letterSpacing: 3, marginTop: 2, fontFamily: "'DM Mono', monospace"
           }}>
-            {stats?.total_active || 0} ACTIVE Â· {stats?.adherence_7d ?? "â€”"}% ADHERENCE 7D
+            {stats?.total_active || 0} ACTIVE · {stats?.adherence_7d ?? "—"}% ADHERENCE 7D
           </div>
         </div>
 
@@ -618,7 +618,7 @@ export default function MedicationPage({ token }) {
               border: "1px solid rgba(239,68,68,0.3)",
               borderRadius: 20, animation: "pulse 2s infinite",
             }}>
-              <span style={{ color: "#ef4444", fontSize: 12 }}>âš </span>
+              <span style={{ color: "#ef4444", fontSize: 12 }}>⚠</span>
               <span style={{ fontSize: 9, color: "#ef4444", letterSpacing: 1 }}>
                 INTERACTION ALERT
               </span>
@@ -657,7 +657,7 @@ export default function MedicationPage({ token }) {
         </div>
       </div>
 
-      {/* â”€â”€ Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Body ────────────────────────────────────────────────── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
         {/* â•â• TODAY TAB â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
@@ -686,7 +686,7 @@ export default function MedicationPage({ token }) {
                     </span>
                     <span style={{
                       fontSize: 14, color: adhPct >= 80 ? "#22c55e" : "#f59e6b",
-                      fontFamily: "'Syne', sans-serif", fontWeight: 700
+                      fontFamily: "'LEMONMILK', sans-serif", fontWeight: 700
                     }}>
                       {taken}/{total} taken
                     </span>
@@ -705,7 +705,7 @@ export default function MedicationPage({ token }) {
                 </div>
               )}
 
-              {/* Interaction alerts â€” always show if present */}
+              {/* Interaction alerts — always show if present */}
               {interactions.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{
@@ -754,14 +754,14 @@ export default function MedicationPage({ token }) {
                   textAlign: "center", padding: "60px 0",
                   animation: "pulse 1.2s infinite"
                 }}>
-                  Loading medicationsâ€¦
+                  Loading medications…
                 </div>
               ) : filteredSchedule.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 0" }}>
-                  <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>â¬¡</div>
+                  <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>⬡</div>
                   <div style={{
                     fontSize: 13, color: "rgba(255,255,255,0.2)",
-                    fontFamily: "'Syne',sans-serif"
+                    fontFamily: "'LEMONMILK',sans-serif"
                   }}>
                     No medications scheduled
                   </div>
@@ -801,7 +801,7 @@ export default function MedicationPage({ token }) {
                   color: "rgba(255,255,255,0.4)", lineHeight: 1.6,
                   fontStyle: "italic", fontFamily: "'DM Mono', monospace"
                 }}>
-                  â—Ž Medication adherence ({stats.adherence_7d ?? "â€”"}% this week) is shared with
+                  ◎ Medication adherence ({stats.adherence_7d ?? "—"}% this week) is shared with
                   MindGuide for personalised health support. Ask MindGuide about your medications
                   for evidence-based guidance.
                 </div>
@@ -826,7 +826,7 @@ export default function MedicationPage({ token }) {
                   fontSize: 12, color: "rgba(255,255,255,0.28)",
                   textAlign: "center", padding: "60px 0", fontFamily: "'DM Mono', monospace"
                 }}>
-                  No adherence data yet â€” start logging doses
+                  No adherence data yet — start logging doses
                 </div>
               ) : adherence.map(med => {
                 const cat = CATEGORIES.find(c => c.key === med.category) || CATEGORIES[5];
@@ -844,13 +844,13 @@ export default function MedicationPage({ token }) {
                     <div style={{ flex: 1 }}>
                       <div style={{
                         fontSize: 14, color: "rgba(255,255,255,0.88)",
-                        fontFamily: "'Syne', sans-serif", fontWeight: 700,
+                        fontFamily: "'LEMONMILK', sans-serif", fontWeight: 700,
                         marginBottom: 4
                       }}>
                         {med.name}
                       </div>
                       <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono', monospace" }}>
-                        {med.taken} of {med.total_logs} doses logged Â· last 30 days
+                        {med.taken} of {med.total_logs} doses logged · last 30 days
                       </div>
                       {/* Mini bar */}
                       <div style={{

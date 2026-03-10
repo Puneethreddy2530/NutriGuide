@@ -1,4 +1,4 @@
-﻿import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import * as THREE from "three";
@@ -226,7 +226,7 @@ function SceneHUD({ hoveredKey, scores, riskScore, onNavigate }) {
           color: "#e5e7eb",
           backdropFilter: "blur(8px)",
         }}>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, lineHeight: 1.1 }}>Health Orbit 3D</div>
+          <div style={{ fontFamily: "'LEMONMILK', sans-serif", fontSize: 28, lineHeight: 1.1 }}>Health Orbit 3D</div>
           <div style={{ fontSize: 11, letterSpacing: 1.2, opacity: 0.85 }}>ALWAYS-ON INTERACTIVE SCENE</div>
         </div>
       </div>
@@ -311,7 +311,7 @@ export default function HealthOrbit({ scores = {}, riskScore = 30, onNavigate })
       background: "radial-gradient(circle at 50% 20%, #1a2032 0%, #070a14 55%, #03050b 100%)",
       fontFamily: "'DM Mono', monospace",
     }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');`}</style>
       <Canvas dpr={[1, 2]} camera={{ fov: 52, position: [0, 8, 26] }}>
         <Suspense fallback={null}>
           <SceneRoot

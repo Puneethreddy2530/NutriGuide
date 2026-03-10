@@ -1,16 +1,16 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const API = import.meta?.env?.VITE_API_URL ?? "";
 
 const POST_TYPES = {
-  general: { label: "General", color: "#64748b", icon: "â—Ž" },
-  streak_share: { label: "Streak", color: "#60a5fa", icon: "ðŸ”¥" },
-  milestone: { label: "Milestone", color: "#eab308", icon: "âœ¦" },
-  support_request: { label: "Support", color: "#8b5cf6", icon: "ðŸ’œ" },
-  journal_share: { label: "Journal", color: "#3b82f6", icon: "â—ˆ" },
+  general: { label: "General", color: "#64748b", icon: "◎" },
+  streak_share: { label: "Streak", color: "#60a5fa", icon: "♦" },
+  milestone: { label: "Milestone", color: "#eab308", icon: "✦" },
+  support_request: { label: "Support", color: "#8b5cf6", icon: "♡" },
+  journal_share: { label: "Journal", color: "#3b82f6", icon: "◈" },
 };
 
-const EMOJIS = ["ðŸ’™", "ðŸ”¥", "ðŸ’ª", "ðŸŒ±", "âœ¨"];
+const EMOJIS = ["♡", "♦", "◆", "◎", "✦"];
 
 const CHALLENGE_LABELS = {
   journaling: "Journalling",
@@ -18,9 +18,9 @@ const CHALLENGE_LABELS = {
   activity: "Activity",
 };
 
-const RANK_BADGES = ["ðŸ¥‡", "ðŸ¥ˆ", "ðŸ¥‰"];
+const RANK_BADGES = ["#1", "#2", "#3"];
 
-// â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Utilities ─────────────────────────────────────────────────────
 const timeAgo = (iso) => {
   const diff = (Date.now() - new Date(iso)) / 1000;
   if (diff < 60) return "just now";
@@ -29,7 +29,7 @@ const timeAgo = (iso) => {
   return `${Math.floor(diff / 86400)}d ago`;
 };
 
-// â”€â”€ Interceptor Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Interceptor Banner ────────────────────────────────────────────
 function InterceptorBanner({ response, onDismiss, onMindGuide }) {
   return (
     <div style={{
@@ -50,7 +50,7 @@ function InterceptorBanner({ response, onDismiss, onMindGuide }) {
         <div>
           <div style={{
             fontSize: 14, color: "#8b5cf6",
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "'LEMONMILK', sans-serif",
             fontWeight: 800
           }}>
             MindGuide reached out privately
@@ -78,7 +78,7 @@ function InterceptorBanner({ response, onDismiss, onMindGuide }) {
           color: "#8b5cf6", fontSize: 11, border: "none",
           fontWeight: 600, fontFamily: "'DM Mono', monospace", letterSpacing: 1,
         }}>
-          Talk to MindGuide â†’
+          Talk to MindGuide →
         </button>
         <button onClick={onDismiss} style={{
           padding: "10px 16px", background: "none", border: "none",
@@ -92,7 +92,7 @@ function InterceptorBanner({ response, onDismiss, onMindGuide }) {
   );
 }
 
-// â”€â”€ Post Card (Non-Boxy) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Post Card (Non-Boxy) ───────────────────────────────────────────
 function PostCard({ post, onReact, onComment, myUserId }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
@@ -163,12 +163,12 @@ function PostCard({ post, onReact, onComment, myUserId }) {
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 16, fontWeight: 600,
           }}>
-            {post.anonymous ? "â—Ž" : post.display_name[0].toUpperCase()}
+            {post.anonymous ? "◎" : post.display_name[0].toUpperCase()}
           </div>
           <div>
             <div style={{
               fontSize: 15, color: "rgba(255,255,255,0.88)",
-              fontFamily: "'Syne', sans-serif",
+              fontFamily: "'LEMONMILK', sans-serif",
               fontWeight: 700, letterSpacing: "-0.2px"
             }}>
               {post.display_name}
@@ -202,7 +202,7 @@ function PostCard({ post, onReact, onComment, myUserId }) {
               borderRadius: 20, color: "#3b82f6",
               fontWeight: 600, fontFamily: "'DM Mono', monospace",
             }}>
-              ðŸ”¥ {ctx.streak}d streak
+              {ctx.streak}d streak
             </span>
           )}
           {ctx.mood && (
@@ -285,7 +285,7 @@ function PostCard({ post, onReact, onComment, myUserId }) {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600
               }}>
-                {c.anonymous ? "â—Ž" : c.display_name[0].toUpperCase()}
+                {c.anonymous ? "◎" : c.display_name[0].toUpperCase()}
               </div>
               <div style={{ paddingTop: 4 }}>
                 <span style={{
@@ -342,7 +342,7 @@ function PostCard({ post, onReact, onComment, myUserId }) {
   );
 }
 
-// â”€â”€ Leaderboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Leaderboard ───────────────────────────────────────────────────
 function LeaderboardPanel({ leaderboard, filter, onFilter }) {
   return (
     <div style={{
@@ -353,7 +353,7 @@ function LeaderboardPanel({ leaderboard, filter, onFilter }) {
     }}>
       <div style={{
         fontSize: 15, color: "rgba(255,255,255,0.88)",
-        fontFamily: "'Syne', sans-serif", fontWeight: 800,
+        fontFamily: "'LEMONMILK', sans-serif", fontWeight: 800,
         marginBottom: 16,
       }}>
         Top Streaks
@@ -424,7 +424,7 @@ function LeaderboardPanel({ leaderboard, filter, onFilter }) {
   );
 }
 
-// â”€â”€ Safety Demo Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Safety Demo Modal ─────────────────────────────────────────────
 function SafetyDemoModal({ onClose }) {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -442,9 +442,9 @@ function SafetyDemoModal({ onClose }) {
         : "#22c55e";
 
   const statusIcon = (action) =>
-    action === "intercepted" ? "ðŸ›¡"
-      : action === "posted_with_support" ? "ðŸ’œ"
-        : "âœ“";
+    action === "intercepted" ? "◈"
+      : action === "posted_with_support" ? "♡"
+        : "✓";
 
   return (
     <div style={{
@@ -461,10 +461,10 @@ function SafetyDemoModal({ onClose }) {
       }}>
         <div style={{
           fontSize: 22, color: "rgba(255,255,255,0.88)",
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontWeight: 800, marginBottom: 8
         }}>
-          ðŸ›¡ AI Safety Interceptor Demo
+          ◈ AI Safety Interceptor Demo
         </div>
         <div style={{
           fontSize: 13, color: "rgba(255,255,255,0.4)",
@@ -482,7 +482,7 @@ function SafetyDemoModal({ onClose }) {
             color: "rgba(255,255,255,0.3)", fontSize: 13, fontWeight: 500,
             animation: "pulse 1.2s infinite"
           }}>
-            Running live safety checksâ€¦
+            Running live safety checks…
           </div>
         ) : results?.results?.map((r, i) => (
           <div key={i} style={{
@@ -628,7 +628,7 @@ export default function CirclesFeed({ token, onNavigate }) {
       });
       if (!r.ok) {
         const errText = await r.text().catch(() => "Unknown error");
-        setPostError(`Failed to post: ${r.status} â€” ${errText}`);
+        setPostError(`Failed to post: ${r.status} — ${errText}`);
         setPosting(false);
         return;
       }
@@ -683,7 +683,7 @@ export default function CirclesFeed({ token, onNavigate }) {
       color: "rgba(255,255,255,0.88)",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
         @keyframes fadeUp  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
         @keyframes pulse   { 0%,100%{opacity:0.4} 50%{opacity:1} }
         * { box-sizing: border-box; }
@@ -691,7 +691,7 @@ export default function CirclesFeed({ token, onNavigate }) {
 
       {showSafetyDemo && <SafetyDemoModal onClose={() => setShowSafetyDemo(false)} />}
 
-      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Header ────────────────────────────────────────────── */}
       <div style={{
         padding: "24px 40px",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -702,7 +702,7 @@ export default function CirclesFeed({ token, onNavigate }) {
         <div>
           <div style={{
             fontSize: 28, color: "rgba(255,255,255,0.88)",
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "'LEMONMILK', sans-serif",
             fontWeight: 800, letterSpacing: "-0.5px"
           }}>
             Circles
@@ -712,9 +712,9 @@ export default function CirclesFeed({ token, onNavigate }) {
               fontSize: 12, color: "rgba(255,255,255,0.3)",
               fontWeight: 500, marginTop: 4
             }}>
-              {stats.total_members} members Â· {stats.total_posts} posts
+              {stats.total_members} members · {stats.total_posts} posts
               {stats.crisis_intercepted > 0 &&
-                ` Â· ðŸ™Œ ${stats.crisis_intercepted} helped`}
+                ` · ${stats.crisis_intercepted} helped`}
             </div>
           )}
           <div style={{
@@ -739,7 +739,7 @@ export default function CirclesFeed({ token, onNavigate }) {
             onMouseEnter={e => e.target.style.transform = "scale(1.05)"}
             onMouseLeave={e => e.target.style.transform = "scale(1)"}
           >
-            <span style={{ fontSize: 14 }}>ðŸ›¡</span>
+            <span style={{ fontSize: 14 }}>◈</span>
             <span style={{ fontSize: 11, color: "#166534", letterSpacing: 0.5 }}>
               AI SAFETY ACTIVE
             </span>
@@ -777,12 +777,12 @@ export default function CirclesFeed({ token, onNavigate }) {
             transition: "all 0.2s",
             boxShadow: composerOpen ? "none" : "0 4px 14px rgba(96,165,250,0.3)"
           }}>
-            {composerOpen ? "âœ• CANCEL" : "+ SHARE"}
+            {composerOpen ? "✕ CANCEL" : "+ SHARE"}
           </button>
         </div>
       </div>
 
-      {/* â”€â”€ Main layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Main layout ───────────────────────────────────────── */}
       <div style={{
         flex: 1, display: "flex",
         maxWidth: 1100, width: "100%",
@@ -790,7 +790,7 @@ export default function CirclesFeed({ token, onNavigate }) {
         gap: 40, alignItems: "flex-start"
       }}>
 
-        {/* â”€â”€ Feed column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Feed column ─────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 0 }}>
 
           {intercepted && (
@@ -839,7 +839,7 @@ export default function CirclesFeed({ token, onNavigate }) {
                     ? "Share what you're going through. This community is here for you."
                     : postType === "streak_share"
                       ? "Share your streak milestone! How are you feeling?"
-                      : "What's on your mind? Share with the communityâ€¦"
+                      : "What's on your mind? Share with the community…"
                 }
                 rows={4}
                 style={{
@@ -863,7 +863,7 @@ export default function CirclesFeed({ token, onNavigate }) {
                     cursor: "pointer", color: "rgba(255,255,255,0.5)",
                     fontFamily: "'DM Mono', monospace",
                   }}>
-                    {anonymous ? "ðŸ›¡ ANONYMOUS" : "ðŸ‘€ PUBLIC"}
+                    {anonymous ? "◈ ANONYMOUS" : "○ PUBLIC"}
                   </button>
 
                   <button onClick={() => setShareHealth(s => !s)} style={{
@@ -873,13 +873,13 @@ export default function CirclesFeed({ token, onNavigate }) {
                     cursor: "pointer", color: shareHealth ? "#3b82f6" : "rgba(255,255,255,0.5)",
                     fontFamily: "'DM Mono', monospace",
                   }}>
-                    {shareHealth ? "âœ“ MOOD ATTACHED" : "+ ATTACH MOOD"}
+                    {shareHealth ? "✓ MOOD ATTACHED" : "+ ATTACH MOOD"}
                   </button>
                 </div>
 
                 <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                   <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 500 }}>
-                    ðŸ›¡ AI screened before posting
+                    ◈ AI screened before posting
                   </span>
                   <button
                     onClick={handlePost}
@@ -894,7 +894,7 @@ export default function CirclesFeed({ token, onNavigate }) {
                       transition: "all 0.2s",
                       boxShadow: content.trim() && !posting ? "0 4px 14px rgba(96,165,250,0.3)" : "none",
                     }}>
-                    {posting ? "CHECKINGâ€¦" : "POST"}
+                    {posting ? "CHECKING…" : "POST"}
                   </button>
                 </div>
               </div>
@@ -910,7 +910,7 @@ export default function CirclesFeed({ token, onNavigate }) {
                   <button onClick={() => setPostError(null)} style={{
                     background: "none", border: "none", cursor: "pointer",
                     color: "#ef4444", fontSize: 16, fontWeight: 800
-                  }}>âœ•</button>
+                  }}>✕</button>
                 </div>
               )}
             </div>
@@ -927,9 +927,9 @@ export default function CirclesFeed({ token, onNavigate }) {
             </div>
           ) : posts.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 0" }}>
-              <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.1 }}>â—Ž</div>
+              <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.1 }}>◎</div>
               <div style={{ fontSize: 16, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>
-                No posts yet â€” be the first to share
+                No posts yet — be the first to share
               </div>
             </div>
           ) : (
@@ -963,7 +963,7 @@ export default function CirclesFeed({ token, onNavigate }) {
           )}
         </div>
 
-        {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Sidebar ──────────────────────────────────────────── */}
         <div style={{ width: 280, flexShrink: 0 }}>
           <LeaderboardPanel
             leaderboard={leaderboard}

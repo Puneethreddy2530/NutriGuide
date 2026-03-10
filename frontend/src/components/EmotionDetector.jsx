@@ -415,7 +415,7 @@ export default function EmotionDetector({ token, userId, onEmotionUpdate }) {
     }}>
       {/* Google font */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=display=swap');
 
         .emotion-pulse {
           animation: pulse 2s ease-in-out infinite;
@@ -445,7 +445,7 @@ export default function EmotionDetector({ token, userId, onEmotionUpdate }) {
       {/* Header */}
       <div style={{ marginBottom: 28, textAlign: "center" }}>
         <div style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontSize: 9,
           letterSpacing: 6,
           color: "rgba(255,255,255,0.25)",
@@ -455,7 +455,7 @@ export default function EmotionDetector({ token, userId, onEmotionUpdate }) {
           Neural Emotion Engine
         </div>
         <div style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontSize: 22,
           fontWeight: 800,
           letterSpacing: -0.5,
@@ -640,7 +640,7 @@ export default function EmotionDetector({ token, userId, onEmotionUpdate }) {
                   {cfg.icon}
                 </div>
                 <div style={{
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "'LEMONMILK', sans-serif",
                   fontSize: 22,
                   fontWeight: 800,
                   color: cfg.color,
@@ -712,7 +712,7 @@ export default function EmotionDetector({ token, userId, onEmotionUpdate }) {
                 background: `linear-gradient(90deg, #4ade80, #fb923c ${stressPct > 60 ? "60%" : "100%"}, #f87171)`,
               }} />
             </div>
-            <div style={{ marginTop: 8, fontSize: 20, fontWeight: 700, color: stressLabelClr, fontFamily: "'Syne', sans-serif" }}>
+            <div style={{ marginTop: 8, fontSize: 20, fontWeight: 700, color: stressLabelClr, fontFamily: "'LEMONMILK', sans-serif" }}>
               {stressPct}
               <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginLeft: 2, fontWeight: 400 }}>/100</span>
             </div>
@@ -870,7 +870,7 @@ export default function EmotionDetector({ token, userId, onEmotionUpdate }) {
 
               {/* Emotion name */}
               <div style={{
-                fontFamily: "'Syne', sans-serif",
+                fontFamily: "'LEMONMILK', sans-serif",
                 fontSize: 36, fontWeight: 800, color: fCfg.color,
                 letterSpacing: -1, marginBottom: 4,
               }}>
@@ -893,7 +893,7 @@ export default function EmotionDetector({ token, userId, onEmotionUpdate }) {
                   <span style={{ fontSize: 9, letterSpacing: 3, color: "rgba(255,255,255,0.25)", fontFamily: "'DM Mono', monospace" }}>
                     STRESS INDEX
                   </span>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: fStressClr, fontFamily: "'Syne', sans-serif" }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: fStressClr, fontFamily: "'LEMONMILK', sans-serif" }}>
                     {fStressPct}<span style={{ fontSize: 10, opacity: 0.5 }}>/100</span>
                   </span>
                 </div>

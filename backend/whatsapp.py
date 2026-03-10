@@ -1,5 +1,5 @@
-"""
-CAP³S WhatsApp Patient Bot
+﻿"""
+NutriGuide WhatsApp Patient Bot
 ===========================
 Adapted from AgriSahayak whatsapp.py (Puneeth Reddy T)
 
@@ -29,14 +29,14 @@ import logging
 import httpx
 from datetime import datetime, date
 from fastapi import APIRouter, Request, Form
+from pydantic import BaseModel, Field
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # ── injected by main.py after startup ─────────────────────────
-# Access via globals().get() inside handlers so that a webhook firing before
-# main.py has run "_wa_module.con = con" gets None rather than NameError.
+con: object = None          # DuckDB connection; set by main.py via _wa_module.con = con
 patients_db: dict = {}
 
 # Serialises concurrent webhook writes to the shared DuckDB connection.
@@ -49,7 +49,7 @@ _db_write_lock = asyncio.Lock()
 GUPSHUP_API_KEY       = os.getenv("GUPSHUP_API_KEY", "")
 GUPSHUP_APP_ID        = os.getenv("GUPSHUP_APP_ID", "")
 GUPSHUP_SOURCE_NUMBER = os.getenv("GUPSHUP_SOURCE_NUMBER", "")   # your registered WhatsApp number
-GUPSHUP_APP_NAME      = os.getenv("GUPSHUP_APP_NAME", "CAP3S")
+GUPSHUP_APP_NAME      = os.getenv("GUPSHUP_APP_NAME", "Nutriguide")
 _GUPSHUP_OUTBOUND_URL = "https://api.gupshup.io/sm/api/v1/msg"
 
 
@@ -212,28 +212,28 @@ REPLY_TEMPLATES = {
     "te": {
         "logged": "✅ {meal_time} నమోదు చేయబడింది: {level}. మీ ఆరోగ్యం బాగుండాలని ఆశిస్తున్నాం! 🙏",
         "alert": "⚠️ మీరు 2+ భోజనాలు తిరస్కరించారు. మీ డైటీషియన్ మీకు వెంటనే సంప్రదిస్తారు.",
-        "help": "🏥 CAP³S పేషెంట్ బాట్\n\nమీ భోజన స్థితి తెలపండి:\n'పూర్తిగా తిన్నాను' / 'కొంచెం తిన్నాను' / 'తినలేదు'\n\nసహాయానికి 'help' పంపండి.",
+        "help": "🏥 NutriGuide పేషెంట్ బాట్\n\nమీ భోజన స్థితి తెలపండి:\n'పూర్తిగా తిన్నాను' / 'కొంచెం తిన్నాను' / 'తినలేదు'\n\nసహాయానికి 'help' పంపండి.",
         "discharge": "🎉 మీ డిశ్చార్జ్ హోమ్ మీల్ గైడ్ తయారైంది! 30 రోజుల ప్లాన్ మీ WhatsApp కి పంపడమైంది. 🍱",
         "clarify": "మీరు ఎంత తిన్నారు?\n1 = పూర్తిగా తిన్నాను\n2 = కొంచెం తిన్నాను\n3 = తినలేదు\n\nదయచేసి 1, 2 లేదా 3 అని పంపండి."
     },
     "ta": {
         "logged": "✅ {meal_time} பதிவு செய்யப்பட்டது: {level}. நலமாக இருக்கட்டும்! 🙏",
         "alert": "⚠️ நீங்கள் 2+ உணவுகளை மறுத்துள்ளீர்கள். உங்கள் dietitian விரைவில் தொடர்பு கொள்வார்கள்.",
-        "help": "🏥 CAP³S Patient Bot\n\nஉணவு நிலை தெரிவிக்கவும்:\n'முழுவதும் சாப்பிட்டேன்' / 'கொஞ்சம் சாப்பிட்டேன்' / 'சாப்பிடவில்லை'\n\nஉதவிக்கு 'help' அனுப்பவும்.",
+        "help": "🏥 NutriGuide Patient Bot\n\nஉணவு நிலை தெரிவிக்கவும்:\n'முழுவதும் சாப்பிட்டேன்' / 'கொஞ்சம் சாப்பிட்டேன்' / 'சாப்பிடவில்லை'\n\nஉதவிக்கு 'help' அனுப்பவும்.",
         "discharge": "🎉 உங்கள் வீட்டு உணவு வழிகாட்டி தயார்! 30 நாள் திட்டம் WhatsApp-ல் அனுப்பப்பட்டது. 🍱",
         "clarify": "நீங்கள் எவ்வளவு சாப்பிட்டீர்கள்?\n1 = முழுவதும்\n2 = கொஞ்சம்\n3 = சாப்பிடவில்லை\n\nதயவுசெய்து 1, 2 அல்லது 3 அனுப்பவும்."
     },
     "hi": {
         "logged": "✅ {meal_time} दर्ज किया गया: {level}. जल्दी स्वस्थ हों! 🙏",
         "alert": "⚠️ आपने 2+ बार खाने से मना किया है। आपके dietitian जल्द संपर्क करेंगे।",
-        "help": "🏥 CAP³S Patient Bot\n\nखाने की स्थिति बताएं:\n'पूरा खाया' / 'थोड़ा खाया' / 'नहीं खाया'\n\nमदद के लिए 'help' भेजें।",
+        "help": "🏥 NutriGuide Patient Bot\n\nखाने की स्थिति बताएं:\n'पूरा खाया' / 'थोड़ा खाया' / 'नहीं खाया'\n\nमदद के लिए 'help' भेजें।",
         "discharge": "🎉 आपकी घरेलू भोजन गाइड तैयार है! 30 दिन का प्लान WhatsApp पर भेजा गया। 🍱",
         "clarify": "क्या आपने खाना खाया?\n1 = पूरा\n2 = थोड़ा\n3 = नहीं\n\nकृपया 1, 2 या 3 भेजें।"
     },
     "en": {
         "logged": "✅ {meal_time} logged: {level}. Wishing you a speedy recovery! 🙏",
         "alert": "⚠️ You've refused 2+ meals. Your dietitian will follow up shortly.",
-        "help": "🏥 CAP³S Patient Bot\n\nReport your meal:\n'Ate fully' / 'Partially' / 'Refused'\n\nSend 'help' for assistance.",
+        "help": "🏥 NutriGuide Patient Bot\n\nReport your meal:\n'Ate fully' / 'Partially' / 'Refused'\n\nSend 'help' for assistance.",
         "discharge": "🎉 Your home meal guide is ready! 30-day plan sent to your WhatsApp. 🍱",
         "clarify": "How much did you eat?\n1 = Ate fully\n2 = Partially\n3 = Refused\n\nPlease reply with 1, 2, or 3."
     }
@@ -295,7 +295,7 @@ async def whatsapp_webhook(
     if not patient:
         await send_gupshup_reply(
             sender,
-            "🏥 CAP³S Clinical Nutrition System\n\n"
+            "🏥 NutriGuide Clinical Nutrition System\n\n"
             "Your number is not registered. Please contact the hospital reception.\n\n"
             "आपका नंबर पंजीकृत नहीं है। कृपया अस्पताल से संपर्क करें।"
         )
@@ -337,8 +337,21 @@ async def whatsapp_webhook(
             logger.warning("Vision classification failed, using text fallback: %s", e)
             consumption, confidence = classify_consumption(text)
     else:
-        # ── TEXT/VOICE message ────────────────────────────────────
-        consumption, confidence = classify_consumption(text)
+        # ── TEXT/VOICE message: IndicBERT multilingual classifier primary ──
+        try:
+            from ai_models import indic_classify_consumption
+            indic_label, indic_conf, indic_meta = await indic_classify_consumption(text)
+            if indic_label is not None and indic_conf >= 0.55:
+                consumption, confidence = indic_label, indic_conf
+                logger.info("IndicBERT classified '%s' → %s (conf=%.2f, src=%s)",
+                            text[:40], consumption, confidence, indic_meta.get("source", "?"))
+            else:
+                # IndicBERT unavailable or low confidence → keyword fallback
+                consumption, confidence = classify_consumption(text)
+                logger.info("Keyword fallback for '%s' → %s (conf=%.2f)", text[:40], consumption, confidence)
+        except Exception as exc:
+            logger.warning("IndicBERT call failed: %s — using keyword fallback", exc)
+            consumption, confidence = classify_consumption(text)
 
     logger.info("Classified '%s' → %s (confidence=%.2f)", text[:40], consumption, confidence)
 
@@ -352,7 +365,7 @@ async def whatsapp_webhook(
     today = str(date.today())
     meal_time = get_meal_time()
 
-    _db = globals().get('con')
+    _db = con
     if _db is None:
         logger.error("WhatsApp webhook: DuckDB connection not injected. Bot cannot log meals.")
         await send_gupshup_reply(sender, "⚠️ System error — please contact the hospital. (DB not ready)")
@@ -389,6 +402,120 @@ async def whatsapp_webhook(
 
     await send_gupshup_reply(sender, reply)
     return {"status": "ok"}
+
+
+class WaProcessRequest(BaseModel):
+    # `from` is reserved in Python — field aliased via populate_by_name
+    sender: str = Field(..., alias="from")
+    text: str
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/process")
+async def whatsapp_process(req: WaProcessRequest):
+    """
+    whatsapp-web.js bridge endpoint.
+
+    The Node bot POSTs { "from": "919876543210@c.us", "text": "thoda khaya" }
+    and receives back { "reply": "<localised reply text>" }.
+
+    This runs the identical pipeline as /webhook but:
+    - Input is plain JSON (not Gupshup form-encoded)
+    - Output is { reply } JSON instead of calling Gupshup outbound API
+    - Phone normalisation strips @c.us and adds leading + for patients.json match
+    """
+    # Normalise number: "919876543210@c.us" → "+919876543210"
+    raw_phone = req.sender.split("@")[0]  # strip @c.us / @g.us
+    if raw_phone and not raw_phone.startswith("+"):
+        raw_phone = "+" + raw_phone
+
+    text = req.text.strip()
+    logger.info("WA-web.js process: from=%s text='%s'", raw_phone, text[:60])
+
+    # ── Patient lookup ────────────────────────────────────────────
+    patient = next(
+        (p for p in patients_db.values() if p.get("phone") == raw_phone),
+        None,
+    )
+
+    if not patient:
+        return {
+            "reply": (
+                "🏥 NutriGuide Clinical Nutrition\n\n"
+                "Your number is not registered. Please contact the hospital.\n"
+                "आपका नंबर पंजीकृत नहीं है। कृपया अस्पताल से संपर्क करें।"
+            )
+        }
+
+    _LANG_MAP = {
+        "Telugu": "te", "Tamil": "ta", "Hindi": "hi", "Marathi": "mr",
+        "Gujarati": "gu", "Kannada": "kn", "Bengali": "bn", "Punjabi": "pa",
+    }
+    lang = _LANG_MAP.get(patient.get("language_name", ""), "en")
+    patient_id   = patient["id"]
+    patient_name = patient["name"]
+
+    body_lower = text.lower()
+
+    # ── HELP ─────────────────────────────────────────────────────
+    if body_lower in ["help", "मदद", "உதவி", "సహాయం", ""]:
+        return {"reply": get_reply(lang, "help")}
+
+    # ── Classify consumption ──────────────────────────────────────
+    try:
+        from ai_models import indic_classify_consumption
+        indic_label, indic_conf, _ = await indic_classify_consumption(text)
+        if indic_label is not None and indic_conf >= 0.55:
+            consumption, confidence = indic_label, indic_conf
+        else:
+            consumption, confidence = classify_consumption(text)
+    except Exception as exc:
+        logger.warning("IndicBERT failed in /process: %s — keyword fallback", exc)
+        consumption, confidence = classify_consumption(text)
+
+    # Low confidence → ask for structured answer
+    if confidence < 0.7:
+        return {"reply": get_reply(lang, "clarify")}
+
+    # ── Log to DuckDB ─────────────────────────────────────────────
+    today     = str(date.today())
+    meal_time = get_meal_time()
+    _db = con
+
+    if _db is None:
+        return {"reply": "⚠️ System error — please contact the hospital. (DB not ready)"}
+
+    async with _db_write_lock:
+        _db.execute(
+            "INSERT INTO meal_logs VALUES (?, ?, ?, ?, ?, ?)",
+            [patient_id, today, meal_time, consumption, datetime.now(), text[:200]],
+        )
+        recent_refusals = _db.execute("""
+            SELECT COUNT(*) FROM meal_logs
+            WHERE patient_id = ?
+              AND consumption_level = 'Refused'
+              AND logged_at >= CURRENT_TIMESTAMP - INTERVAL '48' HOUR
+        """, [patient_id]).fetchone()[0]
+
+    # ── Build reply ───────────────────────────────────────────────
+    meal_time_display = {
+        "breakfast": {"te": "అల్పాహారం",        "ta": "காலை உணவு",  "hi": "नाश्ता",             "en": "Breakfast"},
+        "lunch":     {"te": "మధ్యాహ్న భోజనం",   "ta": "மதிய உணவு",  "hi": "दोपहर का खाना",     "en": "Lunch"},
+        "dinner":    {"te": "రాత్రి భోజనం",      "ta": "இரவு உணவு",  "hi": "रात का खाना",        "en": "Dinner"},
+        "snack":     {"te": "స్నాక్స్",          "ta": "சிற்றுண்டி", "hi": "स्नैक",              "en": "Snack"},
+    }
+    meal_label = meal_time_display.get(meal_time, {}).get(lang, meal_time.title())
+    reply = get_reply(lang, "logged", meal_time=meal_label, level=consumption)
+
+    if recent_refusals >= 2:
+        reply += "\n\n" + get_reply(lang, "alert")
+        logger.warning(
+            "DIETITIAN ALERT (WA-web.js): %s (%s) refused %d meals in 48h",
+            patient_name, patient_id, recent_refusals,
+        )
+
+    return {"reply": reply}
 
 
 @router.get("/status")

@@ -1,13 +1,14 @@
-import { useState, useEffect, useContext } from 'react'
+﻿import { useState, useEffect, useContext } from 'react'
 import { LangContext } from '../App.jsx'
-import { t } from '../cap3s_i18n.js'
+import { t } from '../nutriguide_i18n.js'
+import AIModelsPanel from '../components/AIModelsPanel.jsx'
 
 const OP_META = {
-  'Diet Order Update':       { icon: '📋', color: 'var(--teal)',  badge: 'ORDER'   },
-  'Meal Consumption Logged': { icon: '🍽️', color: '#818CF8',     badge: 'LOG'     },
-  'Weekly Summary Signed':   { icon: '📊', color: '#34D399',     badge: 'REPORT'  },
-  'Discharge Guide Signed':  { icon: '🏠', color: '#F59E0B',     badge: 'DISCHARGE'},
-  'RAG Query Signed':        { icon: '🔍', color: '#60A5FA',     badge: 'RAG'     },
+  'Diet Order Update':       { icon: '▣', color: 'var(--teal)',  badge: 'ORDER'   },
+  'Meal Consumption Logged': { icon: '○', color: '#818CF8',     badge: 'LOG'     },
+  'Weekly Summary Signed':   { icon: '▦', color: '#34D399',     badge: 'REPORT'  },
+  'Discharge Guide Signed':  { icon: '△', color: '#F59E0B',     badge: 'DISCHARGE'},
+  'RAG Query Signed':        { icon: '◎', color: '#60A5FA',     badge: 'RAG'     },
 }
 
 function VerifiedBadge({ verified }) {
@@ -224,7 +225,7 @@ export default function AuditTrail() {
           Algorithm Note — Quantum Complexity
         </div>
         <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
-          CAP³S implements <strong style={{ color: 'var(--text)' }}>Grover's oracle semantics on classical statevector simulation</strong> —
+          NutriGuide implements <strong style={{ color: 'var(--text)' }}>Grover's oracle semantics on classical statevector simulation</strong> —
           demonstrating the algorithm's quadratic advantage in search complexity.
           The classical simulation is O(N), but the quantum operator structure is exact.
           This is the standard verification method used in{' '}
@@ -234,6 +235,11 @@ export default function AuditTrail() {
           reproducible implementation of the algorithmic structure that{' '}
           <em>would</em> achieve O(√N) on real quantum hardware.
         </div>
+      </div>
+
+      {/* ── AI Model Pipeline ── */}
+      <div className="card" style={{ marginTop: 10 }}>
+        <AIModelsPanel />
       </div>
     </div>
   )

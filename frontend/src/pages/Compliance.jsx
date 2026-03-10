@@ -1,9 +1,10 @@
 import { useState, useEffect, useContext } from 'react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 import CorrelationInsight from '../components/CorrelationInsight.jsx'
-import { nutritionApi, mealPlanApi } from '../api/client.js'
+import WhatsAppBotSimulator from '../components/WhatsAppBotSimulator.jsx'
+import { nutritionApi, mealPlanApi, malnutritionApi } from '../api/client.js'
 import { LangContext } from '../App.jsx'
-import { t } from '../cap3s_i18n.js'
+import { t } from '../nutriguide_i18n.js'
 
 function UpdateModal({ patientId, onClose, onSave }) {
   const [saving, setSaving] = useState(false)
@@ -59,13 +60,13 @@ function UpdateModal({ patientId, onClose, onSave }) {
             </div>
 
             <div style={{ padding: '10px 14px', background: 'var(--bg3)', borderRadius: 8, marginBottom: 20, fontSize: 12, color: 'var(--text2)', borderLeft: '2px solid var(--teal)' }}>
-              📋 Patient tolerating liquids well. Progress to soft mechanical diet. Increase calories to support wound healing.
+              ▣ Patient tolerating liquids well. Progress to soft mechanical diet. Increase calories to support wound healing.
             </div>
 
             <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text3)', marginBottom: 20 }}>
               <span className="badge badge-teal">⬡ PQC-signed</span>
-              <span className="badge badge-amber">📱 WhatsApp alert</span>
-              <span className="badge badge-green">🍽 Kitchen notified</span>
+              <span className="badge badge-amber">◎ WhatsApp alert</span>
+              <span className="badge badge-green">○ Kitchen notified</span>
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
@@ -88,15 +89,17 @@ export default function Compliance() {
   const [summary, setSummary] = useState(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [showUpdate, setShowUpdate] = useState(false)
+  const [maln, setMaln] = useState(null)
   const { lang } = useContext(LangContext)
 
   async function load() {
     setLoading(true)
-    const [tl, sum] = await Promise.all([
+    const [tl, sum, mal] = await Promise.all([
       nutritionApi.getTimeline(patientId).then(r => r.data).catch(() => null),
-      nutritionApi.getSummary(patientId).then(r => r.data).catch(() => null)
+      nutritionApi.getSummary(patientId).then(r => r.data).catch(() => null),
+      malnutritionApi.getRisk(patientId).then(r => r.data).catch(() => null),
     ])
-    setTimeline(tl); setSummary(sum); setLoading(false)
+    setTimeline(tl); setSummary(sum); setMaln(mal); setLoading(false)
   }
 
   useEffect(() => { load() }, [patientId])
@@ -340,6 +343,82 @@ export default function Compliance() {
           )}
         </>
       )}
+
+      {/* ── Flan-T5 Malnutrition Ensemble ────────────────────────────── */}
+      {maln && maln.flan_t5_assessment && (() => {
+        const ft = maln.flan_t5_assessment
+        const agree = ft.models_agree
+        const flagColor = agree ? 'var(--green)' : 'var(--red)'
+        const nrsColor = ft.nrs2002_level === 'HIGH' ? 'var(--red)' : ft.nrs2002_level === 'MODERATE' ? '#F59E0B' : 'var(--green)'
+        const flanColor = ft.flan_risk_level === 'HIGH' ? 'var(--red)' : ft.flan_risk_level === 'MODERATE' ? '#F59E0B' : 'var(--green)'
+        return (
+          <div className="card" style={{ marginTop: 24, padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 16 }}>◎</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>SOTA Feature 3 — Flan-T5 Malnutrition Risk Ensemble</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>google/flan-t5-base via HF Inference API · ensembled with NRS-2002 score · disagreement → auto-dietitian flag</div>
+              </div>
+              <span style={{
+                marginLeft: 'auto', fontSize: 9, padding: '2px 10px', borderRadius: 99,
+                background: agree ? 'rgba(16,185,129,0.12)' : 'rgba(244,63,94,0.12)',
+                color: agree ? 'var(--green)' : 'var(--red)',
+                border: `1px solid ${agree ? 'rgba(16,185,129,0.3)' : 'rgba(244,63,94,0.3)'}`,
+                fontWeight: 700,
+              }}>{agree ? 'CONSENSUS' : '⚠ DISAGREEMENT'}</span>
+            </div>
+            <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 14 }}>
+              <div style={{ padding: 14, background: 'var(--bg3)', borderRadius: 10, borderLeft: `3px solid ${nrsColor}` }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 4, letterSpacing: '0.06em' }}>NRS-2002</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: nrsColor }}>{ft.nrs2002_level}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Score: {maln.score}</div>
+              </div>
+              <div style={{ padding: 14, background: 'var(--bg3)', borderRadius: 10, borderLeft: `3px solid ${flanColor}` }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 4, letterSpacing: '0.06em' }}>Flan-T5</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: flanColor }}>{ft.flan_risk_level}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{ft.source === 'flan_t5_live' ? '● live' : '○ fallback'}</div>
+              </div>
+              <div style={{ padding: 14, background: agree ? 'rgba(16,185,129,0.06)' : 'rgba(244,63,94,0.06)', borderRadius: 10, border: `1px solid ${agree ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}` }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.06em' }}>Ensemble Decision</div>
+                <div style={{ fontSize: 12, color: flagColor, fontWeight: 600, lineHeight: 1.5 }}>{ft.ensemble_action}</div>
+                {ft.dietitian_flag && (
+                  <div style={{ marginTop: 8, fontSize: 11, padding: '4px 10px', background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 6, color: 'var(--red)', display: 'inline-block' }}>▸ Auto-flagged for dietitian review</div>
+                )}
+              </div>
+            </div>
+            {ft.clinical_reasoning && (
+              <div style={{ padding: '0 16px 16px' }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.06em' }}>Flan-T5 Clinical Reasoning</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg3)', borderRadius: 8, padding: '10px 14px', fontStyle: 'italic', lineHeight: 1.6 }}>"{ft.clinical_reasoning}"</div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* ── WhatsApp Bot Simulator — IndicBERT live demo ─────────────── */}
+      <div className="card" style={{ marginTop: 24, padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', gap: 10
+        }}>
+          <span style={{ fontSize: 16 }}>◎</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>SOTA Feature 4 — IndicBERT Multilingual WhatsApp Classifier</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+              Replaces brittle keyword regex · ai4bharat/indic-bert via XLM-RoBERTa-XNLI · conf &lt; 0.55 → clarification prompt
+            </div>
+          </div>
+          <span style={{
+            marginLeft: 'auto', fontSize: 9, padding: '2px 10px', borderRadius: 99,
+            background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+            border: '1px solid rgba(99,102,241,0.3)', fontWeight: 700,
+          }}>HACKATHON DEMO</span>
+        </div>
+        <div style={{ padding: 16 }}>
+          <WhatsAppBotSimulator />
+        </div>
+      </div>
 
       {showUpdate && patientId === 'P003' && <UpdateModal patientId="P003" onClose={() => setShowUpdate(false)} onSave={load} />}
     </div>

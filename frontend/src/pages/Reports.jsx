@@ -3,17 +3,21 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Refere
 import KitchenBurnRate from '../components/KitchenBurnRate.jsx'
 import { reportsApi, dashboardApi, wasteApi } from '../api/client.js'
 import { LangContext } from '../App.jsx'
-import { t } from '../cap3s_i18n.js'
+import { t } from '../nutriguide_i18n.js'
 
 function DischargeModal({ patient, onClose }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
+  const [phone, setPhone] = useState(patient.phone || '')
   const { lang } = useContext(LangContext)
 
   async function discharge() {
     setLoading(true)
-    const r = await fetch(`/api/v1/discharge/${patient.id}`, { method: 'POST' })
-      .then(r => r.json()).catch(() => ({ error: 'Network error' }))
+    const r = await fetch(`/api/v1/discharge/${patient.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_override: phone || undefined }),
+    }).then(r => r.json()).catch(() => ({ error: 'Network error' }))
     setResult(r); setLoading(false)
   }
 
@@ -32,8 +36,8 @@ function DischargeModal({ patient, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               {[
                 { icon: '◇', label: 'Generate 30-day home meal guide', sub: `In ${patient.language} using Azure GPT-4o` },
-                { icon: '📱', label: 'WhatsApp to patient', sub: patient.phone },
-                { icon: '📱', label: 'WhatsApp to caregiver', sub: `${patient.caregiver_phone || 'Caregiver number'}` },
+                { icon: '▣', label: 'Send diet plan PDF via WhatsApp', sub: 'NutriGuide 30-day personalised PDF' },
+                { icon: '◎', label: 'WhatsApp to caregiver', sub: `${patient.caregiver_phone || 'Caregiver number'}` },
                 { icon: '⬡', label: 'PQC-sign discharge summary', sub: 'NIST FIPS 204 Dilithium3' },
               ].map(({ icon, label, sub }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--bg3)', borderRadius: 10 }}>
@@ -45,11 +49,30 @@ function DischargeModal({ patient, onClose }) {
                 </div>
               ))}
             </div>
+
+            {/* Phone number input */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                WhatsApp number for diet plan PDF
+              </div>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="+91XXXXXXXXXX"
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 14,
+                  background: 'var(--bg3)', border: '1px solid var(--border2)', color: 'var(--text1)',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={discharge} disabled={loading}>
                 {loading
                   ? <><span style={{ width: 14, height: 14, border: '2px solid #00000030', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }}/> Generating…</>
-                  : '🚀 Discharge & Send'}
+                  : '▷ Discharge & Send PDF'}
               </button>
               <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             </div>
@@ -68,13 +91,13 @@ function DischargeModal({ patient, onClose }) {
                   {[
                     ['30-day home guide', result.home_guide_generated ? '✓ Generated' : '—'],
                     ['Language', result.language],
-                    ['WhatsApp (patient)', result.whatsapp_patient_sent ? '✓ Sent' : '—'],
+                    ['Diet plan PDF', result.diet_plan_pdf_sent ? `✓ Sent to ${result.diet_plan_phone}` : (result.diet_plan_error ? `✗ ${result.diet_plan_error}` : '—')],
                     ['WhatsApp (caregiver)', result.whatsapp_caregiver_sent ? '✓ Sent' : '—'],
                     ['PQC signature', result.pqc_signed ? '✓ Signed' : '—'],
                   ].map(([l, v]) => (
                     <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                       <span style={{ color: 'var(--text2)' }}>{l}</span>
-                      <span style={{ fontWeight: 600, color: v.startsWith('✓') ? 'var(--green)' : 'var(--text3)' }}>{v}</span>
+                      <span style={{ fontWeight: 600, color: v.startsWith('✓') ? 'var(--green)' : v.startsWith('✗') ? 'var(--red)' : 'var(--text3)' }}>{v}</span>
                     </div>
                   ))}
                 </div>
@@ -340,8 +363,8 @@ export default function Reports() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
         {[
           { icon: '▣', label: 'Weekly PDF Report', desc: 'ReportLab-generated clinical summary with macros, compliance chart, PQC signature footer' },
-          { icon: '🚀', label: '30-Day Discharge Guide', desc: `Gemini generates culturally appropriate home meal guide in patient's vernacular language` },
-          { icon: '📱', label: 'WhatsApp Delivery', desc: 'Twilio sends guide to patient + caregiver. Works across all 9 Indian languages' },
+          { icon: '▷', label: '30-Day Discharge Guide', desc: `Gemini generates culturally appropriate home meal guide in patient's vernacular language` },
+          { icon: '◎', label: 'WhatsApp Delivery', desc: 'Twilio sends guide to patient + caregiver. Works across all 9 Indian languages' },
         ].map(({ icon, label, desc }) => (
           <div key={label} className="card" style={{ padding: 18 }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>{icon}</div>

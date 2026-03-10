@@ -3,8 +3,7 @@ import RestrictionConflictGraph from '../components/RestrictionConflictGraph.jsx
 import FoodDrugGraph from '../components/FoodDrugGraph.jsx'
 import { patientApi } from '../api/client.js'
 import { LangContext } from '../App.jsx'
-import { t } from '../cap3s_i18n.js'
-
+import { t } from '../nutriguide_i18n.js'
 const MEALS = ['breakfast', 'lunch', 'dinner', 'snack']
 const MEAL_ICONS = { breakfast: '☀', lunch: '◑', dinner: '☾', snack: '◇' }
 
@@ -58,7 +57,7 @@ function MealCard({ meal, violation }) {
       </div>
       {meal.prep_notes && (
         <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text3)', padding: '6px 10px', background: 'var(--bg)', borderRadius: 6, borderLeft: '2px solid var(--border2)' }}>
-          📋 {meal.prep_notes}
+          ▣ {meal.prep_notes}
         </div>
       )}
     </div>
@@ -75,6 +74,9 @@ export default function MealPlan() {
   const [checking, setChecking] = useState(false)
   const [activeDay, setActiveDay] = useState(1)
   const [error, setError] = useState(null)
+  const [summary, setSummary] = useState(null)
+  const [summarizing, setSummarizing] = useState(false)
+  const [summaryModel, setSummaryModel] = useState('azure') // 'azure' | 'ollama'
 
   // Fetch live restrictions when patient changes
   useEffect(() => {
@@ -88,14 +90,37 @@ export default function MealPlan() {
   }, [patientId])
 
   async function generate() {
-    setLoading(true); setError(null); setPlan(null); setCompliance(null)
-    const r = await fetch('/api/v1/generate_meal_plan', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patient_id: patientId })
-    }).then(r => r.json()).catch(e => ({ error: e.message }))
-    setLoading(false)
-    if (r.error) { setError(r.error); return }
-    setPlan(r); setActiveDay(1)
+    setLoading(true); setError(null); setPlan(null); setCompliance(null); setSummary(null)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 120000)
+    try {
+      const res = await fetch('/api/v1/generate_meal_plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_id: patientId, duration_days: 7 }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+      const r = await res.json()
+      if (!res.ok || r.detail) {
+        setError(r.detail || r.message || `Server error ${res.status}`)
+      } else if (!r.meal_plan || r.meal_plan.length === 0) {
+        setError(r.message || 'Plan generated but no meals returned. Check backend logs.')
+      } else {
+        setPlan(r); setActiveDay(1)
+        if (r.status === 'fallback') {
+          setError(`⚠ Using demo plan (Azure GPT-4o unavailable): ${r.message || ''}`)
+        }
+      }
+    } catch (e) {
+      clearTimeout(timeoutId)
+      if (e.name === 'AbortError') {
+        setError('Request timed out after 2 minutes. The backend may be overloaded — try again.')
+      } else {
+        setError(`Network error — is the backend running on port 8179? (${e.message})`)
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function checkCompliance() {
@@ -108,6 +133,23 @@ export default function MealPlan() {
     }).then(r => r.json()).catch(() => null)
     setChecking(false)
     setCompliance(r)
+  }
+
+  async function summarizePlan() {
+    if (!plan?.meal_plan) return
+    setSummarizing(true); setSummary(null)
+    try {
+      const res = await fetch('/api/v1/summarize_meal_plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_id: patientId, meal_plan: plan.meal_plan, model: summaryModel })
+      })
+      const r = await res.json()
+      setSummary(r)
+    } catch (e) {
+      setSummary({ summary: `Error: ${e.message}`, model_used: 'error' })
+    } finally {
+      setSummarizing(false)
+    }
   }
 
   const dayMeals = plan?.meal_plan?.filter(m => m.day_number === activeDay) || []
@@ -124,8 +166,8 @@ export default function MealPlan() {
 
       {/* Controls */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
             <label style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6, display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t(lang, 'patient_label')}</label>
             <select className="input" value={patientId} onChange={e => setPatientId(e.target.value)}>
               <option value="P001">P001 — Ravi Kumar (Type 2 Diabetes)</option>
@@ -142,6 +184,29 @@ export default function MealPlan() {
             <button className="btn btn-ghost" onClick={checkCompliance} disabled={checking}>
               {checking ? t(lang, 'checking') : t(lang, 'check_compliance')}
             </button>
+          )}
+          {plan && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <select
+                className="input"
+                value={summaryModel}
+                onChange={e => setSummaryModel(e.target.value)}
+                style={{ fontSize: 12, padding: '6px 10px', minWidth: 120 }}
+              >
+                <option value="azure">☁ Azure GPT-4o</option>
+                <option value="ollama">⚡ Ollama (GPU)</option>
+              </select>
+              <button
+                className="btn btn-ghost"
+                onClick={summarizePlan}
+                disabled={summarizing}
+                style={{ fontSize: 13, whiteSpace: 'nowrap' }}
+              >
+                {summarizing
+                  ? <><span style={{ width: 12, height: 12, border: '2px solid #00000030', borderTopColor: 'var(--teal)', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }}/> Summarizing…</>
+                  : '◈ Summarize Plan'}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -183,6 +248,27 @@ export default function MealPlan() {
               {compliance.compliance_status === 'COMPLIANT' ? '100' : String(Math.max(0, 100 - (compliance.violations_found || 0) * 10))}%
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Summary card */}
+      {summary && (
+        <div className="card" style={{ marginBottom: 20, borderColor: '#818CF840', background: '#818CF806' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#818CF8' }}>◈ Clinical Summary</span>
+            <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 10px', borderRadius: 6 }}>
+              {summary.model_used?.includes('ollama') ? '⚡ Ollama · GPU Accelerated' : '☁ Azure GPT-4o'}
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>{summary.summary}</div>
+          {summary.gpu_note && (
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>{summary.gpu_note}</div>
+          )}
+          {summary.model_used === 'unavailable' && (
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--amber)' }}>
+              ⚠ Configure AZURE_OPENAI_API_KEY or start Ollama to enable summarization.
+            </div>
+          )}
         </div>
       )}
 

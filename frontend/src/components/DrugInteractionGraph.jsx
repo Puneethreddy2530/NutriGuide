@@ -19,7 +19,7 @@ const T = {
   txt: "rgba(255,255,255,0.88)",
   muted: "rgba(255,255,255,0.32)",
   font: "'DM Mono', monospace",
-  serif: "'Syne', sans-serif",
+  serif: "'LEMONMILK', sans-serif",
 };
 
 // ── Interaction Card (light themed) ───────────────────────────────────────────
@@ -158,7 +158,7 @@ function DrugCircleSimulation({ drugA, drugB, severity, loading }) {
         <div style={{
           width: 110, height: 110, borderRadius: "50%",
           background: `radial-gradient(circle at 38% 38%,rgba(96,165,250,0.20),rgba(96,165,250,0.20))`,
-          border: "2px solidrgba(96,165,250,0.20)",
+          border: "2px solid rgba(96,165,250,0.20)",
           display: "flex", alignItems: "center", justifyContent: "center",
           position: "absolute", left: "50%", transform: "translateX(-90px)",
           boxShadow: `0 0 ${severity === 2 ? 22 : 12}px rgba(249,115,22,0.${pulse ? 25 : 15})`,
@@ -355,7 +355,7 @@ export default function DrugInteractionGraph({ token }) {
       flexDirection: "column",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
         @keyframes fadeSlide { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
         @keyframes shimmer { 0%{opacity:0.5} 50%{opacity:1} 100%{opacity:0.5} }
         @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.9} }
@@ -465,7 +465,7 @@ export default function DrugInteractionGraph({ token }) {
                   placeholder="Search drug name…"
                   style={{
                     flex: 1, background: T.bg,
-                    border: `1px solidrgba(96,165,250,0.20)`,
+                    border: `1px solid rgba(96,165,250,0.20)`,
                     borderRadius: 8, padding: "9px 12px",
                     color: T.txt, fontSize: 12,
                     fontFamily: T.font, outline: "none",
@@ -477,7 +477,7 @@ export default function DrugInteractionGraph({ token }) {
                   style={{
                     padding: "9px 13px",
                     background: T.accentBg,
-                    border: `1px solidrgba(96,165,250,0.20)`,
+                    border: `1px solid rgba(96,165,250,0.20)`,
                     borderRadius: 8, color: T.accent,
                     fontSize: 16, cursor: "pointer",
                     transition: "all 0.2s", fontWeight: 700,
@@ -598,7 +598,7 @@ export default function DrugInteractionGraph({ token }) {
           <div style={{ marginBottom: 20 }}>
             {medications.length === 0 ? (
               <div style={{
-                border: `2px dashedrgba(96,165,250,0.20)`,
+                border: `2px dashed rgba(96,165,250,0.20)`,
                 borderRadius: 16, padding: "24px 20px", textAlign: "center",
               }}>
                 <div style={{ fontSize: 28, color: "rgba(96,165,250,0.20)", marginBottom: 8 }}>⬟</div>
@@ -790,7 +790,7 @@ export default function DrugInteractionGraph({ token }) {
             {!result && !summaryLoading && (
               <div style={{
                 textAlign: "center", padding: "32px 12px",
-                border: `2px dashedrgba(96,165,250,0.20)`,
+                border: `2px dashed rgba(96,165,250,0.20)`,
                 borderRadius: 14,
               }}>
                 <div style={{ fontSize: 28, color: "rgba(96,165,250,0.20)", marginBottom: 10 }}>◈</div>

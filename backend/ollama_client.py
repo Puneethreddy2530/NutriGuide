@@ -1,5 +1,5 @@
 """
-ollama_client.py — NeoPulse MindGuide AI Core
+ollama_client.py — CAP³S Clinical Dietitian AI Core
 ═══════════════════════════════════════════════
 Async Ollama client with:
   - GPU acceleration (num_gpu layers auto-detected)

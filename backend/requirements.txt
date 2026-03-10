@@ -1,4 +1,4 @@
-# CAP³S Backend Requirements
+﻿# NutriGuide Backend Requirements
 # pip install -r requirements.txt
 
 # ── Core FastAPI ───────────────────────────────────────────────────
@@ -34,6 +34,14 @@ cryptography==43.0.3
 
 # ── Multipart form (WhatsApp webhook) ───────────────────────────────
 python-multipart==0.0.12
+
+# ── Text-to-Speech (Edge-TTS neural voices) ─────────────────────────
+edge-tts==6.1.12
+
+# ── Authentication (JWT + password hashing) ──────────────────────────
+python-jose==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 
 # ── Standard library (no install needed) ────────────────────────────
 # json, hashlib, hmac, base64, threading, logging, datetime, math, re

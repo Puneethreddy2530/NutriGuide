@@ -60,7 +60,7 @@ con.execute("""CREATE TABLE IF NOT EXISTS diet_updates (
     pqc_signature VARCHAR, updated_at TIMESTAMP)""")
 
 # ── Mock data ─────────────────────────────────────────────────────────────────
-def load_json(f): return json.load(open(DATA_DIR / f))
+def load_json(f): return json.load(open(DATA_DIR / f, encoding="utf-8"))
 patients_db = {p["id"]: p for p in load_json("patients.json")}
 inventory_db = load_json("kitchen_inventory.json")
 restrictions_db = load_json("restrictions_map.json")
@@ -506,7 +506,7 @@ async def download_weekly_report(patient_id: str, start_date: Optional[str] = No
     try:
         pdf_bytes = await build_weekly_nutrition_report(patient_id, patients_db, con, start_date, end_date)
         p = patients_db.get(patient_id, {})
-        filename = f"CAP3S_NutritionReport_{p.get('name','Patient').replace(' ','_')}_{date.today()}.pdf"
+        filename = f"NutriGuide_NutritionReport_{p.get('name','Patient').replace(' ','_')}_{date.today()}.pdf"
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
@@ -814,7 +814,7 @@ async def tray_vision_demo(patient_id: str, meal_time: str = "lunch"):
 
 # Load interaction knowledge base
 _fdi_path = DATA_DIR / "food_drug_interactions.json"
-_fdi_data = json.loads(_fdi_path.read_text()) if _fdi_path.exists() else {"interactions": []}
+_fdi_data = json.loads(_fdi_path.read_text(encoding="utf-8")) if _fdi_path.exists() else {"interactions": []}
 _fdi_map = _fdi_data["interactions"]
 
 @app.get("/api/v1/food-drug/patient/{patient_id}", tags=["SOTA: Food-Drug GNN"])
@@ -832,7 +832,7 @@ async def get_food_drug_interactions(patient_id: str):
 
     p = patients_db[patient_id]
     medications = p.get("medications", [])
-    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text())["ingredients"]
+    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text(encoding="utf-8"))["ingredients"]
 
     # Build interaction graph nodes and edges
     nodes = []
@@ -981,7 +981,7 @@ async def kitchen_burn_rate_analysis(forecast_days: int = 3):
     Compares against kitchen_inventory.json stock.
     Flags shortfalls 48h before they happen — proactive procurement.
     """
-    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text())["ingredients"]
+    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text(encoding="utf-8"))["ingredients"]
     stock_map = {i["name"]: i["available_kg"] for i in kitchen}
 
     # Get active meal plans from DuckDB
@@ -1065,7 +1065,7 @@ async def kitchen_burn_rate_analysis(forecast_days: int = 3):
 @app.get("/api/v1/kitchen/inventory-status", tags=["SOTA: Kitchen Burn-Rate"])
 async def kitchen_inventory_status():
     """Quick stock level overview for the kitchen dashboard widget."""
-    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text())["ingredients"]
+    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text(encoding="utf-8"))["ingredients"]
     by_category = {}
     for ing in kitchen:
         cat = ing.get("category", "Other")

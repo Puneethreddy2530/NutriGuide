@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "c:\Users\punee\Desktop\All_Projects\Glitchcon_2.0\test_import.py", line 7, in <module>
+    import main
+  File "c:\Users\punee\Desktop\All_Projects\Glitchcon_2.0\backend\main.py", line 68, in <module>
+    con = duckdb.connect(_db_path)
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+duckdb.duckdb.IOException: IO Error: File is already open in 
+C:\Python311\python.exe (PID 27764)

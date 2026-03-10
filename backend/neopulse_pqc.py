@@ -201,7 +201,7 @@ class NeoPulseShield:
             "uov_secret_b64": self.keys.uov_secret_b64,
             "created_at":     self.keys.created_at,
         }
-        with open(self.key_path, "w") as f:
+        with open(self.key_path, "w", encoding="utf-8") as f:
             json.dump(data, f)
         logger.info(f"Keys saved to {self.key_path}")
 
@@ -210,7 +210,7 @@ class NeoPulseShield:
         if not os.path.exists(self.key_path):
             return False
         try:
-            with open(self.key_path) as f:
+            with open(self.key_path, encoding="utf-8") as f:
                 data = json.load(f)
             self.keys = PQKeyPair(
                 dilithium_pk   = base64.b64decode(data["dilithium_pk"]),

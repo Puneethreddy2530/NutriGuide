@@ -1,16 +1,16 @@
 /**
  * TrayVision.jsx
- * SOTA Feature 1 — Zero-Click Tray Auditing
- * Stolen from: NeoPulse EmotionDetector.jsx (multimodal image pipeline)
- * Original: webcam frame → 7-emotion classification
- * Now: nurse food tray photo → % consumed + auto-logged to EHR
+ * SOTA Feature 1 — Two-Stage Zero-Click Tray Auditing
+ * Stage 1: EfficientNet-B4 food classifier (Kaludi/food-category-classification-v2.0)
+ *          Identifies WHAT food is on the tray — 89 Indian hospital food classes
+ * Stage 2: GPT-4o Vision estimates HOW MUCH was consumed given Stage 1 context
  */
 import { useState, useRef } from 'react'
 
 const SEVERITY_COLORS = {
-  'Ate fully': { bg: 'rgba(22,163,74,0.07)',  border: '#16a34a', text: '#15803d', icon: '✅' },
-  'Partially': { bg: 'rgba(234,88,12,0.07)',  border: '#ea580c', text: '#c2410c', icon: '⚠️' },
-  'Refused':   { bg: 'rgba(220,38,38,0.07)',  border: '#dc2626', text: '#b91c1c', icon: '❌' },
+  'Ate fully': { bg: 'rgba(22,163,74,0.07)',  border: '#16a34a', text: '#15803d', icon: '✓' },
+  'Partially': { bg: 'rgba(234,88,12,0.07)',  border: '#ea580c', text: '#c2410c', icon: '⚠' },
+  'Refused':   { bg: 'rgba(220,38,38,0.07)',  border: '#dc2626', text: '#b91c1c', icon: '✘' },
 }
 
 export default function TrayVision({ patient, mealTime = 'lunch', onLogged }) {
@@ -105,24 +105,31 @@ export default function TrayVision({ patient, mealTime = 'lunch', onLogged }) {
   return (
     <div style={s.card}>
       <div style={s.header}>
-        <span>📸</span>
+        <span>◎</span>
         <span>Tray Vision</span>
-        <span style={s.badge}>GEMINI MULTIMODAL</span>
-        <span style={{ ...s.badge, background: 'rgba(74,222,128,0.1)', color: '#15803d' }}>STOLEN: NeoPulse</span>
+        <span style={{ ...s.badge, background: 'rgba(99,102,241,0.12)', color: '#818cf8' }}>2-STAGE PIPELINE</span>
+        <span style={{ ...s.badge, background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: 10 }}>EfficientNet-B4 + GPT-4o</span>
       </div>
 
       {mode === 'idle' && (
         <div>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: '#6366f1', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 5, padding: '2px 8px' }}>
+              Stage 1 · EfficientNet-B4 food ID
+            </span>
+            <span style={{ fontSize: 11, color: '#10b981', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 5, padding: '2px 8px' }}>
+              Stage 2 · GPT-4o Vision consumption
+            </span>
+          </div>
           <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 14 }}>
-            Nurse takes a photo of the returned food tray → AI calculates % consumed → auto-logged to EHR.
-            Zero manual data entry.
+            Nurse photos the returned tray → EfficientNet-B4 identifies food items → GPT-4o estimates % consumed → auto-logged to EHR.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button style={s.btn('#2563eb')} onClick={() => fileRef.current?.click()}>
-              📷 Upload Tray Photo
+              △ Upload Tray Photo
             </button>
             <button style={s.btn('#7c3aed')} onClick={runDemo}>
-              ⚡ Run Demo Analysis
+              ▷ Run Demo Analysis
             </button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
@@ -133,12 +140,15 @@ export default function TrayVision({ patient, mealTime = 'lunch', onLogged }) {
 
       {mode === 'analyzing' && (
         <div style={s.analyzing}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🔬</div>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Gemini Vision Analyzing Tray...</div>
-          <div style={{ color: '#475569', fontSize: 13 }}>
-            Estimating per-item consumption · Checking for clinical flags · Auto-logging to DuckDB
+          <div style={{ fontSize: 36, marginBottom: 12 }}>◎</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Two-Stage Pipeline Running...</div>
+          <div style={{ color: '#6366f1', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+            Stage 1 · EfficientNet-B4 identifying food items...
           </div>
-          <div style={{ marginTop: 16, display: 'flex', gap: 4, justifyContent: 'center' }}>
+          <div style={{ color: '#475569', fontSize: 12, marginBottom: 12 }}>
+            Stage 2 · GPT-4o Vision estimating consumption · Auto-logging to DuckDB
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', gap: 4, justifyContent: 'center' }}>
             {[0,1,2].map(i => (
               <div key={i} style={{
                 width: 8, height: 8, borderRadius: '50%', background: 'var(--teal)',
@@ -150,11 +160,44 @@ export default function TrayVision({ patient, mealTime = 'lunch', onLogged }) {
       )}
 
       {mode === 'result' && result && (() => {
-        const va = result.vision_analysis
+        const va  = result.vision_analysis
+        const fc  = result.food_classification   // Stage 1 EfficientNet output
         const colors = SEVERITY_COLORS[va.consumption_level] || SEVERITY_COLORS['Partially']
         return (
           <div>
-            {/* Main result */}
+            {/* Stage 1 — EfficientNet-B4 food classification */}
+            {fc && (
+              <div style={{
+                background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.25)',
+                borderRadius: 10, padding: '10px 14px', marginBottom: 10
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: '#818cf8', fontWeight: 700 }}>
+                    STAGE 1 · EfficientNet-B4
+                  </span>
+                  <span style={{ fontSize: 10, color: '#475569', marginLeft: 'auto' }}>
+                    {fc.inference_ms}ms
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {(fc.top_predictions || []).map((p, i) => (
+                    <span key={i} style={{
+                      background: i === 0 ? 'rgba(99,102,241,0.15)' : 'var(--bg3)',
+                      border: `1px solid ${i === 0 ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`,
+                      borderRadius: 6, padding: '3px 8px', fontSize: 11,
+                      color: i === 0 ? '#818cf8' : 'var(--text3)'
+                    }}>
+                      {p.label} <span style={{ opacity: 0.7 }}>{(p.score * 100).toFixed(0)}%</span>
+                    </span>
+                  ))}
+                </div>
+                <div style={{ color: '#475569', fontSize: 10, marginTop: 5 }}>
+                  {fc.model} · {fc.source === 'huggingface_api_live' ? '\u25cf live inference' : '\u25cb deterministic fallback'}
+                </div>
+              </div>
+            )}
+
+            {/* Stage 2 — Main consumption result */}
             <div style={{
               background: colors.bg, border: `1px solid ${colors.border}`,
               borderRadius: 10, padding: '14px 18px', marginBottom: 14,
@@ -162,11 +205,14 @@ export default function TrayVision({ patient, mealTime = 'lunch', onLogged }) {
             }}>
               <div style={{ fontSize: 32 }}>{colors.icon}</div>
               <div>
+                <div style={{ color: '#475569', fontSize: 10, fontWeight: 600, marginBottom: 2 }}>
+                  STAGE 2 · GPT-4o Vision
+                </div>
                 <div style={{ color: colors.text, fontWeight: 800, fontSize: 18 }}>
                   {va.consumption_level}
                 </div>
                 <div style={{ color: '#94a3b8', fontSize: 13 }}>
-                  {va.percent_consumed}% of meal consumed · {va.confidence === 'demo_simulation' ? 'Demo Mode' : 'Gemini Vision'}
+                  {va.percent_consumed}% consumed · {va.confidence === 'demo_simulation' ? 'Demo Mode' : 'Live Vision'}
                 </div>
               </div>
               <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
@@ -222,11 +268,11 @@ export default function TrayVision({ patient, mealTime = 'lunch', onLogged }) {
             {/* Alerts */}
             {result.dietitian_alert && (
               <div style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-                <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 13 }}>🚨 {result.alert_message}</div>
+                <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 13 }}>⚠ {result.alert_message}</div>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ color: '#16a34a', fontSize: 12, fontWeight: 600 }}>
                 {result.auto_logged ? '✓ Auto-logged to DuckDB EHR' : '○ Demo mode — not logged'}
               </span>

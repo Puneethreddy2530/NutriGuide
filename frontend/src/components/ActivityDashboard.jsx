@@ -182,11 +182,11 @@ function generateMockActivityData() {
   const myCal = Math.round(me.reduce((a, ac) => a + ac.calories, 0));
 
   const friends = [
-    { name: "Arjun M.", avatar: "🚴", activities: 203, total_km: 3840, total_hours: 102, total_cal: 61000 },
-    { name: "You", avatar: "⚡", activities: me.length, total_km: myKm, total_hours: myHrs, total_cal: myCal, is_you: true },
-    { name: "Priya K.", avatar: "🏃", activities: 149, total_km: 921, total_hours: 74, total_cal: 48000 },
-    { name: "Kavya S.", avatar: "🏊", activities: 89, total_km: 320, total_hours: 67, total_cal: 33000 },
-    { name: "Rahul T.", avatar: "🧘", activities: 112, total_km: 180, total_hours: 88, total_cal: 22000 },
+    { name: "Arjun M.", avatar: "A", activities: 203, total_km: 3840, total_hours: 102, total_cal: 61000 },
+    { name: "You", avatar: "Y", activities: me.length, total_km: myKm, total_hours: myHrs, total_cal: myCal, is_you: true },
+    { name: "Priya K.", avatar: "P", activities: 149, total_km: 921, total_hours: 74, total_cal: 48000 },
+    { name: "Kavya S.", avatar: "K", activities: 89, total_km: 320, total_hours: 67, total_cal: 33000 },
+    { name: "Rahul T.", avatar: "R", activities: 112, total_km: 180, total_hours: 88, total_cal: 22000 },
   ].sort((a, b) => b.total_km - a.total_km).map((f, i) => ({ ...f, rank: i + 1 }));
 
   return {
@@ -1113,8 +1113,8 @@ export default function ActivityDashboard({ token }) {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
-          <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: 1, color: "#60a5fa", fontFamily: "'Syne', sans-serif", fontStyle: "italic" }}>
-            Move. Grow. Thrive. 🔥
+          <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: 1, color: "#60a5fa", fontFamily: "'LEMONMILK', sans-serif", fontStyle: "italic" }}>
+            Move. Grow. Thrive.
           </div>
           <div style={{ fontSize: 10, color: "rgba(96,165,250,0.55)", letterSpacing: 4, marginTop: 2 }}>
             STRAVA · HEALTH CORRELATIONS · COMMUNITY

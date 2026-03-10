@@ -1,5 +1,5 @@
-"""
-CAP³S — Clinical Nutrition Care Agent
+﻿"""
+NutriGuide — Clinical Nutrition Care Agent
 ======================================
 Backend wired with real stolen modules:
   - gemini_client.py     ← Azure OpenAI client (GPT-4o chat + vision + Whisper)
@@ -12,17 +12,22 @@ Backend wired with real stolen modules:
 import json
 import os
 import io
+import re
+import uuid
 import asyncio
 import httpx
 import duckdb
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 load_dotenv(Path(__file__).parent / ".env")
 
@@ -33,6 +38,15 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 
 # ── Azure OpenAI client (ask_gemini = GPT-4o, ask_vision = GPT-4o Vision) ─────
 from gemini_client import ask_gemini
+
+# ── NutriGuide AI Models (HuggingFace Inference API + fallback) ───────────────────
+from ai_models import (
+    classify_food_image,
+    predict_drug_food_severity,
+    flan_malnutrition_score,
+    indic_classify_consumption,
+    MODEL_DISPLAY_NAMES as AI_MODEL_NAMES,
+)
 
 # ── NeoPulse PQC (zero changes) ───────────────────────────────────────────────
 try:
@@ -63,7 +77,7 @@ for _attempt in range(12):
         else:
             raise
 
-# AgriSahayak tables (kept for schema completeness; never queried by CAP³S endpoints)
+# AgriSahayak tables (kept for schema completeness; never queried by NutriGuide endpoints)
 con.execute("CREATE SEQUENCE IF NOT EXISTS disease_id_seq")
 con.execute("""CREATE TABLE IF NOT EXISTS disease_analytics (
     id INTEGER PRIMARY KEY DEFAULT nextval('disease_id_seq'),
@@ -81,7 +95,7 @@ con.execute("""CREATE TABLE IF NOT EXISTS crop_analytics (
     confidence FLOAT, district VARCHAR, state VARCHAR,
     farmer_id VARCHAR, recommended_at TIMESTAMP)""")
 
-# CAP³S clinical tables
+# NutriGuide clinical tables
 con.execute("""CREATE TABLE IF NOT EXISTS meal_logs (
     patient_id VARCHAR, log_date DATE, meal_time VARCHAR,
     consumption_level VARCHAR, logged_at TIMESTAMP, notes VARCHAR)""")
@@ -99,11 +113,12 @@ con.execute("""CREATE TABLE IF NOT EXISTS diet_updates (
 
 # Seed demo meal logs — version-gated so new story data loads on next restart.
 # Bump DEMO_SEED_VERSION to force a re-seed (clears meal_logs and rebuilds).
-DEMO_SEED_VERSION = "cap3s_v2_recovery_arc"
+DEMO_SEED_VERSION = "nutriguide_v3_plans_and_logs"
 con.execute("CREATE TABLE IF NOT EXISTS _seed_meta (key VARCHAR PRIMARY KEY, value VARCHAR)")
 _stored_ver = con.execute("SELECT value FROM _seed_meta WHERE key='demo_version'").fetchone()
-if not _stored_ver or _stored_ver[0] != DEMO_SEED_VERSION:
+if True:  # Always re-seed with fresh dates anchored to today so date-range queries match
     con.execute("DELETE FROM meal_logs")
+    con.execute("DELETE FROM meal_plans")
     con.execute("DELETE FROM _seed_meta WHERE key='demo_version'")
     _today = date.today()
     def _d(offset): return str(_today - timedelta(days=offset))
@@ -183,8 +198,91 @@ if not _stored_ver or _stored_ver[0] != DEMO_SEED_VERSION:
     for _pid, _ld, _mt, _cl, _n in _DEMO_LOGS:
         con.execute("INSERT INTO meal_logs VALUES (?,?,?,?,?,?)",
             [_pid, _ld, _mt, _cl, datetime.now(), _n])
+
+    # ── Seed demo meal plans (7 days per patient) ─────────────────────────
+    # These drive the daily calorie/protein charts in the PDF report.
+    # patient_id, day_number, meal_time, dish_name, ingredients,
+    # calories, protein_g, carb_g, fat_g, sodium_mg, potassium_mg,
+    # compliance_status, violations, created_at
+    _DEMO_PLANS = [
+        # ── P001 Ravi — Diabetic, 1800 kcal target, solid diet ───────
+        ("P001", 1, "breakfast", "Ragi Dosa + Peanut Chutney",  '["ragi_flour","peanut","coconut"]',   420, 14, 58, 12, 180, 340, "compliant", "[]"),
+        ("P001", 1, "lunch",     "Brown Rice + Palak Dal",      '["brown_rice","toor_dal","spinach"]', 520, 22, 72, 10, 350, 620, "compliant", "[]"),
+        ("P001", 1, "dinner",    "Bajra Roti + Methi Sabzi",    '["bajra_flour","fenugreek","onion"]', 480, 16, 64, 14, 280, 480, "compliant", "[]"),
+        ("P001", 2, "breakfast", "Moong Dal Chilla",            '["moong_dal","onion","tomato"]',      380, 18, 42, 10, 160, 360, "compliant", "[]"),
+        ("P001", 2, "lunch",     "Jowar Roti + Drumstick Sambar",'["jowar_flour","toor_dal","drumstick"]', 540, 20, 76, 11, 400, 580, "compliant", "[]"),
+        ("P001", 2, "dinner",    "Mixed Veg Khichdi",           '["brown_rice","moong_dal","carrot","beans"]', 460, 16, 68, 8, 220, 420, "compliant", "[]"),
+        ("P001", 3, "breakfast", "Oats Upma + Coconut",         '["oats","coconut","curry_leaves"]',   390, 12, 52, 14, 190, 300, "compliant", "[]"),
+        ("P001", 3, "lunch",     "Foxtail Millet Rice + Rasam", '["foxtail_millet","tomato","tamarind"]', 510, 18, 74, 9, 380, 540, "compliant", "[]"),
+        ("P001", 3, "dinner",    "Roti + Lauki Sabzi",          '["wheat_flour","bottle_gourd","onion"]', 440, 14, 62, 12, 260, 390, "compliant", "[]"),
+        ("P001", 4, "breakfast", "Idli + Sambar",               '["rice","urad_dal","toor_dal"]',      400, 12, 60, 8, 320, 380, "compliant", "[]"),
+        ("P001", 4, "lunch",     "Brown Rice + Rajma Curry",    '["brown_rice","rajma","tomato"]',     560, 24, 78, 10, 420, 680, "compliant", "[]"),
+        ("P001", 4, "dinner",    "Bajra Roti + Bhindi Sabzi",   '["bajra_flour","okra","onion"]',      450, 14, 60, 14, 240, 440, "compliant", "[]"),
+        ("P001", 5, "breakfast", "Ragi Porridge",               '["ragi_flour","milk","jaggery"]',     360, 10, 56, 8, 140, 320, "compliant", "[]"),
+        ("P001", 5, "lunch",     "Millet Pulao + Raita",        '["foxtail_millet","curd","cucumber"]', 530, 16, 72, 14, 340, 520, "compliant", "[]"),
+        ("P001", 5, "dinner",    "Wheat Dosa + Chutney",        '["wheat_flour","coconut","curry_leaves"]', 420, 12, 58, 14, 200, 360, "compliant", "[]"),
+        ("P001", 6, "breakfast", "Pesarattu + Ginger Chutney",  '["moong_dal","rice","ginger"]',       410, 16, 52, 12, 170, 380, "compliant", "[]"),
+        ("P001", 6, "lunch",     "Brown Rice + Palak Paneer",   '["brown_rice","spinach","paneer"]',   550, 24, 68, 16, 380, 640, "compliant", "[]"),
+        ("P001", 6, "dinner",    "Jowar Roti + Tinda Sabzi",    '["jowar_flour","tinda","onion"]',     430, 14, 62, 10, 220, 380, "compliant", "[]"),
+        ("P001", 7, "breakfast", "Vegetable Poha",              '["flattened_rice","peanut","potato"]', 400, 10, 58, 14, 200, 340, "compliant", "[]"),
+        ("P001", 7, "lunch",     "Millet Khichdi + Curd",       '["foxtail_millet","moong_dal","curd"]', 520, 20, 70, 12, 300, 500, "compliant", "[]"),
+        ("P001", 7, "dinner",    "Roti + Baingan Bharta",       '["wheat_flour","eggplant","onion"]',  440, 14, 60, 14, 260, 420, "compliant", "[]"),
+
+        # ── P002 Meena — CKD Stage 4, 1600 kcal, low-K low-Na ────────
+        ("P002", 1, "breakfast", "Semolina Upma (low-K)",       '["semolina","onion","curry_leaves"]', 340, 8, 52, 10, 120, 160, "compliant", "[]"),
+        ("P002", 1, "lunch",     "White Rice + Lauki Dal",      '["white_rice","moong_dal","bottle_gourd"]', 460, 14, 68, 8, 200, 240, "compliant", "[]"),
+        ("P002", 1, "dinner",    "Phulka + Cabbage Sabzi",      '["wheat_flour","cabbage","onion"]',   420, 12, 58, 12, 180, 220, "compliant", "[]"),
+        ("P002", 2, "breakfast", "Poha (no potato)",            '["flattened_rice","onion","curry_leaves"]', 320, 6, 50, 10, 140, 140, "compliant", "[]"),
+        ("P002", 2, "lunch",     "Rice + Tinda Curry",          '["white_rice","tinda","onion"]',      440, 10, 66, 10, 220, 200, "compliant", "[]"),
+        ("P002", 2, "dinner",    "Chapati + Ridge Gourd",       '["wheat_flour","ridge_gourd","onion"]', 400, 10, 56, 12, 160, 180, "compliant", "[]"),
+        ("P002", 3, "breakfast", "Semolina Idli",               '["semolina","urad_dal","carrot"]',    330, 8, 50, 8, 130, 150, "compliant", "[]"),
+        ("P002", 3, "lunch",     "Rice + Moong Dal",            '["white_rice","moong_dal","ghee"]',   480, 14, 70, 10, 180, 220, "compliant", "[]"),
+        ("P002", 3, "dinner",    "Phulka + Parwal Sabzi",       '["wheat_flour","parwal","onion"]',    390, 10, 54, 12, 150, 200, "compliant", "[]"),
+        ("P002", 4, "breakfast", "Bread + Paneer Bhurji",       '["white_bread","paneer","capsicum"]', 360, 14, 40, 14, 240, 180, "compliant", "[]"),
+        ("P002", 4, "lunch",     "Rice + Bottle Gourd Curry",   '["white_rice","bottle_gourd","tomato"]', 430, 10, 66, 8, 200, 230, "compliant", "[]"),
+        ("P002", 4, "dinner",    "Chapati + Snake Gourd Sabzi", '["wheat_flour","snake_gourd","onion"]', 380, 10, 52, 12, 160, 190, "compliant", "[]"),
+        ("P002", 5, "breakfast", "Upma + Coconut Chutney",      '["semolina","coconut","mustard"]',    350, 8, 50, 12, 130, 150, "compliant", "[]"),
+        ("P002", 5, "lunch",     "Rice + Ash Gourd Curry",      '["white_rice","ash_gourd","moong_dal"]', 450, 12, 68, 8, 190, 210, "compliant", "[]"),
+        ("P002", 5, "dinner",    "Phulka + Cabbage Poriyal",    '["wheat_flour","cabbage","coconut"]', 400, 10, 54, 14, 150, 200, "compliant", "[]"),
+        ("P002", 6, "breakfast", "Vermicelli Upma",             '["vermicelli","onion","peas"]',       340, 8, 52, 8, 120, 160, "compliant", "[]"),
+        ("P002", 6, "lunch",     "Rice + Toor Dal + Ghee",      '["white_rice","toor_dal","ghee"]',    480, 14, 70, 12, 200, 240, "compliant", "[]"),
+        ("P002", 6, "dinner",    "Chapati + Ivy Gourd Sabzi",   '["wheat_flour","ivy_gourd","onion"]', 390, 10, 54, 12, 160, 190, "compliant", "[]"),
+        ("P002", 7, "breakfast", "Semolina Upma (plain)",       '["semolina","curry_leaves","ghee"]',  330, 6, 48, 10, 110, 130, "compliant", "[]"),
+        ("P002", 7, "lunch",     "Rice + Lauki Kofta",          '["white_rice","bottle_gourd","paneer"]', 470, 14, 64, 14, 220, 240, "compliant", "[]"),
+        ("P002", 7, "dinner",    "Phulka + Tinda Sabzi",        '["wheat_flour","tinda","onion"]',     380, 10, 52, 12, 150, 180, "compliant", "[]"),
+
+        # ── P003 Arjun — Post-GI Surgery, 1200 kcal, liquid→soft ─────
+        # Days 1-3: liquid diet (low calorie, high fluid)
+        ("P003", 1, "breakfast", "Clear Vegetable Broth",       '["vegetable_stock","salt"]',          80, 2, 8, 1, 200, 80, "compliant", "[]"),
+        ("P003", 1, "lunch",     "Rice Water + ORS",            '["rice","water","ors_powder"]',       60, 1, 12, 0, 180, 40, "compliant", "[]"),
+        ("P003", 1, "dinner",    "Clear Broth + Glucose Water", '["vegetable_stock","glucose"]',       90, 2, 16, 0, 160, 60, "compliant", "[]"),
+        ("P003", 2, "breakfast", "Strained Dal Water",          '["moong_dal","water"]',               70, 3, 10, 0, 120, 80, "compliant", "[]"),
+        ("P003", 2, "lunch",     "Coconut Water + ORS",         '["coconut_water","ors_powder"]',      80, 1, 16, 0, 100, 120, "compliant", "[]"),
+        ("P003", 2, "dinner",    "Clear Chicken Broth",         '["chicken_stock","salt"]',            60, 4, 4, 2, 200, 80, "compliant", "[]"),
+        ("P003", 3, "breakfast", "Vegetable Broth + Glucose",   '["vegetable_stock","glucose"]',       100, 2, 18, 0, 180, 60, "compliant", "[]"),
+        ("P003", 3, "lunch",     "Thin Moong Dal Soup",         '["moong_dal","water","turmeric"]',    120, 6, 16, 1, 140, 120, "compliant", "[]"),
+        ("P003", 3, "dinner",    "Rice Kanji",                  '["rice","water","salt"]',             90, 2, 18, 0, 160, 40, "compliant", "[]"),
+        # Days 4-5: transition to soft
+        ("P003", 4, "breakfast", "Soft Idli + Thin Sambar",     '["rice","urad_dal","toor_dal"]',      280, 8, 42, 4, 300, 180, "compliant", "[]"),
+        ("P003", 4, "lunch",     "Moong Dal Khichdi (soft)",    '["rice","moong_dal","ghee"]',         320, 10, 48, 6, 240, 220, "compliant", "[]"),
+        ("P003", 4, "dinner",    "Mashed Potato + Curd",        '["potato","curd","salt"]',            220, 6, 34, 4, 200, 280, "compliant", "[]"),
+        ("P003", 5, "breakfast", "Semolina Porridge",           '["semolina","milk","sugar"]',         260, 6, 40, 6, 140, 120, "compliant", "[]"),
+        ("P003", 5, "lunch",     "Soft Rice + Dal Fry",         '["rice","toor_dal","ghee","tomato"]', 380, 12, 56, 8, 280, 260, "compliant", "[]"),
+        ("P003", 5, "dinner",    "Bread + Mashed Dal",          '["white_bread","moong_dal","ghee"]',  280, 10, 38, 8, 220, 180, "compliant", "[]"),
+        # Days 6-7: soft diet fully established
+        ("P003", 6, "breakfast", "Soft Dosa + Coconut Chutney", '["rice","urad_dal","coconut"]',       320, 8, 46, 10, 200, 180, "compliant", "[]"),
+        ("P003", 6, "lunch",     "Khichdi + Curd",             '["rice","moong_dal","curd","ghee"]',  400, 14, 56, 10, 260, 300, "compliant", "[]"),
+        ("P003", 6, "dinner",    "Soft Chapati + Lauki Sabzi",  '["wheat_flour","bottle_gourd","onion"]', 340, 10, 48, 10, 220, 240, "compliant", "[]"),
+        ("P003", 7, "breakfast", "Upma + Banana",               '["semolina","onion","banana"]',       330, 8, 50, 8, 160, 260, "compliant", "[]"),
+        ("P003", 7, "lunch",     "Soft Rice + Palak Dal",       '["rice","moong_dal","spinach"]',      400, 14, 56, 8, 280, 340, "compliant", "[]"),
+        ("P003", 7, "dinner",    "Idli + Rasam",                '["rice","urad_dal","tomato","tamarind"]', 300, 8, 44, 6, 240, 200, "compliant", "[]"),
+    ]
+    for _pid, _dn, _mt, _dish, _ing, _cal, _prot, _carb, _fat, _na, _k, _cs, _viol in _DEMO_PLANS:
+        con.execute("INSERT INTO meal_plans VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [_pid, _dn, _mt, _dish, _ing, _cal, _prot, _carb, _fat, _na, _k, _cs, _viol, datetime.now()])
+    logger.info("Seeded %d demo meal plans + %d meal logs (v3)", len(_DEMO_PLANS), len(_DEMO_LOGS))
+
     con.execute("INSERT INTO _seed_meta VALUES ('demo_version', ?)", [DEMO_SEED_VERSION])
-    logger.info("Seeded %d demo meal logs (v2 — 7-day recovery arc)", len(_DEMO_LOGS))
 
 # ── Mock data ─────────────────────────────────────────────────────────────────
 def load_json(f, default=None):
@@ -304,9 +402,141 @@ logger.info(
     len(inventory_db.get("ingredients", [])),
 )
 
+# ══════════════════════════════════════════════════════════════════════════════
+# AUTHENTICATION — JWT + bcrypt via python-jose + passlib
+# ══════════════════════════════════════════════════════════════════════════════
+JWT_SECRET  = os.getenv("JWT_SECRET_KEY", "nutriguide_demo_secret_change_in_prod_2025")
+JWT_ALGO    = "HS256"
+JWT_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+http_bearer = HTTPBearer(auto_error=False)
+
+# ── Users DuckDB table ────────────────────────────────────────────────────────
+con.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id         INTEGER PRIMARY KEY,
+        user_id    VARCHAR UNIQUE NOT NULL,
+        name       VARCHAR NOT NULL,
+        username   VARCHAR UNIQUE NOT NULL,
+        email      VARCHAR,
+        password_hash VARCHAR NOT NULL,
+        role       VARCHAR DEFAULT 'nurse',
+        created_at TIMESTAMP
+    )
+""")
+con.execute("CREATE SEQUENCE IF NOT EXISTS users_id_seq")
+
+# Seed a default admin account on first run (skip if already exists)
+_admin_exists = con.execute("SELECT 1 FROM users WHERE username='admin'").fetchone()
+if not _admin_exists:
+    con.execute(
+        "INSERT INTO users VALUES (nextval('users_id_seq'),?,?,?,?,?,?,?)",
+        [str(uuid.uuid4()), "Administrator", "admin", None,
+         pwd_ctx.hash("admin123"), "admin", datetime.now()]
+    )
+    logger.info("Seeded default admin user (username=admin, password=admin123)")
+
+
+# ── JWT helpers ───────────────────────────────────────────────────────────────
+def _create_token(data: dict) -> str:
+    payload = {**data, "exp": datetime.utcnow() + timedelta(minutes=JWT_EXPIRE_MINUTES)}
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
+
+
+def _decode_token(token: str) -> dict:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+    except JWTError:
+        raise HTTPException(401, "Invalid or expired token")
+
+
+def _get_current_user(creds: HTTPAuthorizationCredentials = Security(http_bearer)):
+    if not creds:
+        raise HTTPException(401, "Missing Authorization header")
+    return _decode_token(creds.credentials)
+
+
+# ── Pydantic auth models ──────────────────────────────────────────────────────
+class RegisterRequest(BaseModel):
+    name:     str = Field(..., min_length=2)
+    username: str = Field(..., min_length=3, max_length=40)
+    password: str = Field(..., min_length=6)
+    email:    Optional[str] = None
+    role:     str = "nurse"  # nurse | dietitian | admin
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 # ── FastAPI ───────────────────────────────────────────────────────────────────
-app = FastAPI(title="CAP³S — Clinical Nutrition Care Agent", version="1.0.0")
+app = FastAPI(title="NutriGuide — Clinical Nutrition Care Agent", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+@app.on_event("startup")
+async def _expose_db():
+    app.state.con = con
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AUTH ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/auth/register", tags=["Auth"])
+async def register(req: RegisterRequest):
+    """Register a new NutriGuide user (nurse / dietitian / admin)."""
+    role = req.role if req.role in ("nurse", "dietitian", "admin") else "nurse"
+    existing = con.execute(
+        "SELECT 1 FROM users WHERE username=?", [req.username]
+    ).fetchone()
+    if existing:
+        raise HTTPException(409, "Username already taken")
+    if req.email:
+        email_taken = con.execute(
+            "SELECT 1 FROM users WHERE email=?", [req.email]
+        ).fetchone()
+        if email_taken:
+            raise HTTPException(409, "Email already registered")
+    uid = str(uuid.uuid4())
+    con.execute(
+        "INSERT INTO users VALUES (nextval('users_id_seq'),?,?,?,?,?,?,?)",
+        [uid, req.name, req.username, req.email,
+         pwd_ctx.hash(req.password), role, datetime.now()]
+    )
+    token = _create_token({"sub": uid, "username": req.username, "role": role, "name": req.name})
+    return {
+        "access_token": token,
+        "token_type":   "bearer",
+        "user": {"user_id": uid, "name": req.name, "username": req.username,
+                 "role": role, "email": req.email},
+    }
+
+
+@app.post("/api/v1/auth/login", tags=["Auth"])
+async def login(req: LoginRequest):
+    """Login with username + password → JWT."""
+    row = con.execute(
+        "SELECT user_id, name, username, email, password_hash, role FROM users WHERE username=?",
+        [req.username]
+    ).fetchone()
+    if not row or not pwd_ctx.verify(req.password, row[4]):
+        raise HTTPException(401, "Invalid username or password")
+    uid, name, username, email, _, role = row
+    token = _create_token({"sub": uid, "username": username, "role": role, "name": name})
+    return {
+        "access_token": token,
+        "token_type":   "bearer",
+        "user": {"user_id": uid, "name": name, "username": username,
+                 "role": role, "email": email},
+    }
+
+
+@app.get("/api/v1/auth/me", tags=["Auth"])
+async def me(current_user: dict = Depends(_get_current_user)):
+    """Return the currently authenticated user's info."""
+    return current_user
+
 
 # ── WhatsApp router (AgriSahayak remapped) ────────────────────────────────────
 from whatsapp import router as whatsapp_router
@@ -314,6 +544,299 @@ app.include_router(whatsapp_router, prefix="/api/v1/whatsapp", tags=["WhatsApp B
 import whatsapp as _wa_module
 _wa_module.patients_db = patients_db
 _wa_module.con = con
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 30-DAY DIET PLAN — PDF generation + WhatsApp blast
+# ══════════════════════════════════════════════════════════════════════════════
+
+from diet_plan_pdf import build_30day_diet_plan_pdf
+import tempfile
+
+_WA_BOT_DOC_URL = "http://127.0.0.1:8180/send-document"
+
+async def _send_pdf_via_bot(phone: str, pdf_path: str, caption: str) -> dict:
+    """Ask the Node.js whatsapp-web.js bot to send a PDF document."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as hc:
+            resp = await hc.post(
+                _WA_BOT_DOC_URL,
+                json={"phone": phone, "filePath": pdf_path, "caption": caption},
+            )
+            if resp.status_code == 200:
+                return {"ok": True, "phone": phone}
+            return {"ok": False, "phone": phone, "error": resp.text[:200]}
+    except Exception as exc:
+        logger.error("WA bot doc-send failed for %s: %s", phone, exc)
+        return {"ok": False, "phone": phone, "error": str(exc)}
+
+
+class DietPlanRecipient(BaseModel):
+    patient_id: str
+    phone_override: Optional[str] = None   # supply to override patients.json number
+    name_override:  Optional[str] = None
+
+
+class DietPlanBlastRequest(BaseModel):
+    recipients: List[DietPlanRecipient]
+    start_date: Optional[str] = None       # ISO date, defaults to today
+    send_via_whatsapp: bool = True
+
+
+@app.post("/api/v1/whatsapp/send-diet-plan/{patient_id}", tags=["WhatsApp Diet Plan"])
+async def send_single_diet_plan(
+    patient_id: str,
+    phone_override: Optional[str] = None,
+    start_date: Optional[str] = None,
+):
+    """
+    Generate a 30-day personalised PDF diet plan for one patient and
+    send it to their WhatsApp number (or an override number).
+
+    Query params:
+      phone_override  — send to this number instead of patients.json phone
+      start_date      — ISO date to anchor Day 1 (default: today)
+    """
+    p = patients_db.get(patient_id)
+    if not p:
+        raise HTTPException(404, f"Patient {patient_id} not found")
+
+    phone = phone_override or p.get("phone")
+    if not phone:
+        raise HTTPException(400, "No phone number — supply phone_override")
+
+    pdf_bytes = await build_30day_diet_plan_pdf(p, start_date=start_date)
+
+    # Save to a named temp file the Node.js process can read
+    suffix = f"_{patient_id}_30day_plan.pdf"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(pdf_bytes)
+        tmp_path = tmp.name
+
+    caption = (
+        f"🏥 CAP³S — Your 30-Day Personalised Diet Plan\n"
+        f"Patient: {p.get('name')}\n"
+        f"Diagnosis: {p.get('diagnosis','—')}\n"
+        f"Period: {start_date or str(date.today())} → "
+        f"{str(date.fromisoformat(start_date or str(date.today())) + timedelta(days=29))}\n"
+        f"Dietitian: {p.get('attending_dietitian','Dr. Priya Nair')}\n"
+        f"Powered by CAP³S Clinical Nutrition AI 🌱"
+    )
+
+    result = await _send_pdf_via_bot(phone, tmp_path, caption)
+
+    return {
+        "patient_id":   patient_id,
+        "patient_name": p.get("name"),
+        "phone":        phone,
+        "pdf_size_kb":  round(len(pdf_bytes) / 1024, 1),
+        "wa_sent":      result.get("ok", False),
+        "wa_result":    result,
+        "tmp_path":     tmp_path,
+    }
+
+
+@app.post("/api/v1/whatsapp/blast-diet-plans", tags=["WhatsApp Diet Plan"])
+async def blast_diet_plans(req: DietPlanBlastRequest):
+    """
+    Generate 30-day PDF diet plans and send via WhatsApp to multiple
+    patients / friends simultaneously.
+
+    Body example:
+    {
+      "recipients": [
+        { "patient_id": "P001" },
+        { "patient_id": "P002", "phone_override": "+919999988888" },
+        { "patient_id": "P001", "phone_override": "+917777766666", "name_override": "Ravi's Friend" }
+      ],
+      "start_date": "2026-03-10",
+      "send_via_whatsapp": true
+    }
+    """
+    results = []
+    start = req.start_date or str(date.today())
+
+    for rec in req.recipients:
+        p = patients_db.get(rec.patient_id)
+        if not p:
+            results.append({"patient_id": rec.patient_id, "error": "Patient not found"})
+            continue
+
+        # Allow overriding the name in the PDF (e.g. a friend's copy)
+        patient_data = dict(p)
+        if rec.name_override:
+            patient_data = {**p, "name": rec.name_override}
+
+        phone = rec.phone_override or p.get("phone")
+        if not phone:
+            results.append({"patient_id": rec.patient_id, "error": "No phone number"})
+            continue
+
+        try:
+            pdf_bytes = await build_30day_diet_plan_pdf(patient_data, start_date=start)
+            suffix = f"_{rec.patient_id}_{phone.replace('+','')}_30day.pdf"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(pdf_bytes)
+                tmp_path = tmp.name
+
+            caption = (
+                f"🏥 CAP³S — 30-Day Personalised Diet Plan\n"
+                f"For: {patient_data.get('name')}\n"
+                f"Diagnosis: {p.get('diagnosis','—')}\n"
+                f"Period: {start} → "
+                f"{str(date.fromisoformat(start) + timedelta(days=29))}\n"
+                f"Dietitian: {p.get('attending_dietitian','Dr. Priya Nair')}\n"
+                f"CAP³S Clinical Nutrition AI 🌱"
+            )
+
+            if req.send_via_whatsapp:
+                wa_result = await _send_pdf_via_bot(phone, tmp_path, caption)
+            else:
+                wa_result = {"ok": False, "note": "WhatsApp send skipped (send_via_whatsapp=false)"}
+
+            results.append({
+                "patient_id":   rec.patient_id,
+                "recipient":    patient_data.get("name"),
+                "phone":        phone,
+                "pdf_size_kb":  round(len(pdf_bytes) / 1024, 1),
+                "pdf_path":     tmp_path,
+                "wa_sent":      wa_result.get("ok", False),
+                "wa_result":    wa_result,
+            })
+        except Exception as exc:
+            logger.error("Diet plan blast error for %s: %s", rec.patient_id, exc)
+            results.append({"patient_id": rec.patient_id, "phone": phone, "error": str(exc)})
+
+    sent_count = sum(1 for r in results if r.get("wa_sent"))
+    return {
+        "total_recipients": len(req.recipients),
+        "sent_ok":          sent_count,
+        "failed":           len(req.recipients) - sent_count,
+        "start_date":       start,
+        "results":          results,
+    }
+
+
+@app.get("/api/v1/whatsapp/diet-plan-pdf/{patient_id}", tags=["WhatsApp Diet Plan"])
+async def download_diet_plan_pdf(patient_id: str, start_date: Optional[str] = None):
+    """
+    Generate and stream the 30-day diet plan PDF for download (browser / API).
+    No WhatsApp send — pure PDF download endpoint.
+    """
+    p = patients_db.get(patient_id)
+    if not p:
+        raise HTTPException(404, f"Patient {patient_id} not found")
+
+    pdf_bytes = await build_30day_diet_plan_pdf(p, start_date=start_date)
+    fname = f"{patient_id}_30day_diet_plan.pdf"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
+@app.get("/api/v1/whatsapp/classify", tags=["WhatsApp Bot"])
+async def test_consumption_classifier(text: str, patient_id: str = "P001"):
+    """
+    IndicBERT multilingual consumption classifier — frontend demo endpoint.
+
+    Runs the same two-model chain used in the live WhatsApp webhook:
+      1. IndicBERT (ai4bharat/indic-bert via XLM-RoBERTa) — primary
+      2. Keyword heuristic (9 Indian languages) — fallback
+
+    Used by the WhatsApp Bot Simulator component on the frontend.
+    Returns both results so the UI can show the comparison.
+    """
+    from whatsapp import classify_consumption
+
+    # Stage 1: IndicBERT zero-shot classification
+    indic_label, indic_conf, indic_meta = await indic_classify_consumption(text)
+
+    # Stage 2: keyword heuristic (always available, instant)
+    kw_label, kw_conf = classify_consumption(text)
+
+    above_threshold = bool(indic_label and indic_conf >= 0.55)
+    final_label  = indic_label if above_threshold else kw_label
+    final_source = "indicbert" if above_threshold else "keyword_fallback"
+
+    return {
+        "input_text":           text,
+        "final_label":          final_label,
+        "final_confidence":     round(indic_conf if above_threshold else kw_conf, 3),
+        "decision_source":      final_source,
+        "confidence_threshold": 0.55,
+        "indicbert": {
+            "label":        indic_label,
+            "confidence":   indic_conf,
+            "above_threshold": above_threshold,
+            **indic_meta,
+        },
+        "keyword_fallback": {
+            "label":      kw_label,
+            "confidence": kw_conf,
+            "model":      "Keyword heuristic — 9 Indian languages",
+            "source":     "keyword_heuristic",
+        },
+        "pipeline": "IndicBERT primary → keyword fallback (same chain as live WhatsApp webhook)",
+    }
+
+
+@app.get("/api/v1/ai/models", tags=["AI Models"])
+async def list_ai_models():
+    """
+    Returns metadata for all 4 HuggingFace models active in the pipeline.
+    Used by the AI Models panel on the frontend.
+    HF_API_TOKEN presence determines live vs fallback status.
+    """
+    has_token = bool(os.getenv("HF_API_TOKEN", ""))
+    return {
+        "hf_token_configured": has_token,
+        "mode": "live_inference" if has_token else "deterministic_fallback",
+        "models": [
+            {
+                "key":          "food_classifier",
+                "display_name": AI_MODEL_NAMES["food_classifier"],
+                "hf_model_id":  "Kaludi/food-category-classification-v2.0",
+                "architecture": "EfficientNet-B4",
+                "pipeline_role": "Stage 1 of 2 — TrayVision food identification",
+                "classes":      89,
+                "used_in":      "POST /api/v1/tray/analyze",
+                "status":       "live" if has_token else "fallback",
+            },
+            {
+                "key":          "biobert",
+                "display_name": AI_MODEL_NAMES["biobert"],
+                "hf_model_id":  "dmis-lab/biobert-base-cased-v1.2",
+                "architecture": "BioBERT / DeBERTa NLI",
+                "pipeline_role": "Unknown drug-food pair severity prediction",
+                "training_data": "29M PubMed abstracts",
+                "used_in":      "POST /api/v1/check_drug_food",
+                "status":       "live" if has_token else "fallback",
+            },
+            {
+                "key":          "flan_t5",
+                "display_name": AI_MODEL_NAMES["flan_t5"],
+                "hf_model_id":  "google/flan-t5-base",
+                "architecture": "Flan-T5-Base (encoder-decoder)",
+                "pipeline_role": "Parallel NRS-2002 malnutrition clinical reasoning",
+                "ensemble":     "Disagrees with NRS-2002 → auto-flags for dietitian review",
+                "used_in":      "GET /api/v1/malnutrition-risk/{patient_id}",
+                "status":       "live" if has_token else "fallback",
+            },
+            {
+                "key":          "indic_bert",
+                "display_name": AI_MODEL_NAMES["indic_bert"],
+                "hf_model_id":  "ai4bharat/indic-bert",
+                "architecture": "XLM-RoBERTa (zero-shot NLI)",
+                "pipeline_role": "Multilingual WhatsApp consumption classification",
+                "languages":    12,
+                "replaces":     "Keyword regex matching",
+                "used_in":      "POST /api/v1/whatsapp/webhook + GET /api/v1/whatsapp/classify",
+                "status":       "live" if has_token else "fallback",
+            },
+        ],
+    }
 
 
 # ── SSE real-time event bus ───────────────────────────────────────────────────
@@ -402,6 +925,7 @@ class LogConsumptionRequest(BaseModel):
 class AskDietitianRequest(BaseModel):
     patient_id: str
     question: str
+    language: str = 'en'  # BCP-47 code, e.g. 'hi', 'ta', 'te'
 
 
 # ── PQC signing ───────────────────────────────────────────────────────────────
@@ -641,6 +1165,98 @@ async def generate_meal_plan(request: MealPlanRequest):
             for mt, meal in day.get("meals", {}).items()
         ]
         return {"status": "fallback", "message": str(e), "meal_plan": meal_plan_flat, "plan": demo}
+
+
+# ── Pydantic model for summarize ──────────────────────────────────────────────
+class SummarizePlanRequest(BaseModel):
+    patient_id: str
+    meal_plan: List[dict]
+    model: str = "azure"   # "azure" or "ollama"
+
+
+@app.post("/api/v1/summarize_meal_plan", tags=["7 EHR Tools"])
+async def summarize_meal_plan(request: SummarizePlanRequest):
+    """
+    TOOL 3b — Clinical meal-plan summary.
+    Accepts the same meal_plan flat list returned by generate_meal_plan.
+    Sends it to Azure GPT-4o (default) or Ollama (GPU-accelerated, local).
+    """
+    p = patients_db.get(request.patient_id)
+    if not p:
+        raise HTTPException(404, "Patient not found")
+
+    # Build concise plan text grouped by day
+    day_map: dict = {}
+    for m in request.meal_plan:
+        d = m.get("day_number", 0)
+        day_map.setdefault(d, []).append(m)
+
+    plan_lines = []
+    for d in sorted(day_map):
+        meals = day_map[d]
+        day_total_kcal = round(sum(m.get("calories", 0) for m in meals))
+        plan_lines.append(f"Day {d} ({day_total_kcal} kcal):")
+        for m in meals:
+            plan_lines.append(
+                f"  {m.get('meal_time','').capitalize()}: {m.get('dish_name','—')} "
+                f"| {round(m.get('calories',0))} kcal "
+                f"| P:{m.get('protein_g',0)}g C:{m.get('carb_g',0)}g F:{m.get('fat_g',0)}g "
+                f"| Na:{round(m.get('sodium_mg',0))}mg"
+            )
+
+    plan_text = "\n".join(plan_lines)
+
+    prompt = (
+        f"You are a clinical dietitian reviewing a 7-day hospital meal plan.\n"
+        f"Patient: {p['name']} | Diagnosis: {p['diagnosis']}\n"
+        f"Restrictions: {', '.join(p.get('restrictions', []))}\n"
+        f"Calorie target: {p.get('calorie_target', 1800)} kcal/day\n\n"
+        f"Meal Plan:\n{plan_text}\n\n"
+        f"Write a concise 3-5 sentence clinical summary covering:\n"
+        f"1. Overall nutritional adequacy\n"
+        f"2. Notable restriction compliance\n"
+        f"3. One actionable recommendation for the care team."
+    )
+
+    summary = ""
+    model_used = request.model
+
+    if request.model == "ollama":
+        try:
+            from ollama_client import chat as ollama_chat
+            result = await ollama_chat(
+                message=prompt,
+                system_prompt="You are a clinical dietitian. Be concise and medically precise.",
+                stream=False,
+            )
+            summary = result.get("response", "").strip()
+            if not summary:
+                raise ValueError("Ollama returned empty response")
+        except Exception as ollama_err:
+            logger.warning(f"Ollama summarize failed: {ollama_err} — falling back to Azure")
+            model_used = "azure_fallback"
+            summary = ""
+
+    if not summary:
+        summary = await ask_gemini(
+            prompt,
+            system="You are a clinical dietitian. Be concise and medically precise.",
+            max_tokens=400,
+        )
+        if not summary:
+            summary = (
+                "Unable to generate summary — please configure AZURE_OPENAI_API_KEY "
+                "or ensure Ollama is running with a supported model."
+            )
+            model_used = "unavailable"
+
+    return {
+        "summary": summary,
+        "model_used": model_used,
+        "patient_id": request.patient_id,
+        "patient_name": p["name"],
+        "gpu_note": "Ollama uses GPU acceleration via OLLAMA_NUM_GPU=-1 (auto)" if "ollama" in model_used else "Azure GPT-4o cloud inference",
+    }
 
 
 @app.post("/api/v1/check_meal_compliance", tags=["7 EHR Tools"])
@@ -904,7 +1520,7 @@ async def generate_nutrition_summary(
         "consumption_breakdown": {r[0]: r[1] for r in stats},
         # Frontend-compatible flat fields
         "total_meals_logged":  total,
-        "total_meals_planned": len(daily) * 4,   # 4 meal slots per day
+        "total_meals_planned": len(daily) * 3,   # 3 meal slots per day
         "data_available":      len(daily) > 0,
         "fully_eaten":         fully,
         "partially_eaten":     partially,
@@ -1033,7 +1649,7 @@ async def get_malnutrition_risk(patient_id: str):
       • Diet stage (liquid = post-op physiological stress proxy)
       • Diagnosis classification (high / moderate disease severity)
 
-    Pitch: “CAP³S flags Arjun as HIGH malnutrition risk on Day 2 — before
+    Pitch: “NutriGuide flags Arjun as HIGH malnutrition risk on Day 2 — before
     the clinical team even notices. NRS-2002 derived scoring.”
     """
     if patient_id not in patients_db:
@@ -1042,6 +1658,26 @@ async def get_malnutrition_risk(patient_id: str):
     result["pqc_signature_preview"] = pqc_sign(
         f"MALN|{patient_id}|{result['risk_level']}|{result['score']}"
     )[:40] + "..."
+
+    # ── Flan-T5 parallel clinical reasoning — ensemble with NRS-2002 ─────────
+    flan_assessment = await flan_malnutrition_score(
+        patient=patients_db[patient_id],
+        factors=result["factors"],
+    )
+    nrs_level  = result["risk_level"]
+    flan_level = flan_assessment["flan_risk_level"]
+    models_agree = (nrs_level == flan_level)
+    result["flan_t5_assessment"] = {
+        **flan_assessment,
+        "nrs2002_level":   nrs_level,
+        "models_agree":    models_agree,
+        "ensemble_action": (
+            f"CONSENSUS {nrs_level} — high confidence, no escalation needed."
+            if models_agree else
+            f"DISAGREEMENT (NRS-2002={nrs_level}, Flan-T5={flan_level}) — auto-flagged for dietitian human review."
+        ),
+        "dietitian_flag":  not models_agree,
+    }
     return result
 
 
@@ -1049,12 +1685,16 @@ async def get_malnutrition_risk(patient_id: str):
 # BONUS + DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 
+class DischargeRequest(BaseModel):
+    phone_override: Optional[str] = None
+
 @app.post("/api/v1/discharge/{patient_id}", tags=["Bonus WhatsApp Discharge"])
-async def discharge_guide(patient_id: str):
-    """BONUS — 30-day home meal guide in patient's language → WhatsApp to patient + caregiver."""
+async def discharge_guide(patient_id: str, body: DischargeRequest = DischargeRequest()):
+    """Discharge — 30-day home meal guide + PDF sent via WhatsApp to patient."""
     p = patients_db.get(patient_id)
     if not p: raise HTTPException(404, "Patient not found")
 
+    phone = body.phone_override or p.get("phone") or ""
     lang_name = p.get("language_name") or p.get("language", "English")
     system = "You are a clinical dietitian writing simple home care meal instructions."
     prompt = f"""Write a 30-day home meal guide for a {p['diagnosis']} patient.
@@ -1065,19 +1705,42 @@ Each meal: dish name + 2-sentence simple recipe + 1 health tip.
 Write entirely in {lang_name} (transliterate dish names).
 Keep it simple — for a family caregiver with no medical background."""
 
+    diet_plan_sent = False
+    diet_plan_error = None
     try:
         guide = await ask_gemini(prompt, system=system, max_tokens=4096, timeout=60.0)
         if not guide:
             raise ValueError("Azure OpenAI returned an empty guide")
+
+        # Build + send 30-day PDF via WhatsApp
+        if phone:
+            try:
+                pdf_bytes = await build_30day_diet_plan_pdf(p)
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=f"_{patient_id}_discharge_30day.pdf",
+                    prefix="nutriguide_"
+                ) as tf:
+                    tf.write(pdf_bytes)
+                    pdf_path = tf.name
+                wa_result = await _send_pdf_via_bot(
+                    phone, pdf_path,
+                    f"🥗 Your personalised 30-day NutriGuide diet plan from G. Kathir Memorial Hospital."
+                )
+                diet_plan_sent = wa_result.get("ok", False)
+            except Exception as pe:
+                diet_plan_error = str(pe)
+
         return {"status": "success", "patient_name": p["name"], "language": lang_name,
                 "guide_preview": guide[:500] + ("..." if len(guide) > 500 else ""),
                 "full_length_chars": len(guide),
                 "home_guide_generated": True,
-                "whatsapp_patient_sent": bool(p.get("phone")),
+                "whatsapp_patient_sent": diet_plan_sent,
                 "whatsapp_caregiver_sent": bool(p.get("caregiver_phone")),
                 "pqc_signed": True,
-                "whatsapp_sent_to": [p.get("phone"), p.get("caregiver_phone")],
-                "message": f"30-day guide in {lang_name} sent to patient + caregiver"}
+                "diet_plan_pdf_sent": diet_plan_sent,
+                "diet_plan_phone": phone,
+                "diet_plan_error": diet_plan_error,
+                "message": f"30-day guide in {lang_name} sent to {phone or 'patient'}"}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -1087,7 +1750,20 @@ async def ask_dietitian_ai(request: AskDietitianRequest):
     """Streaming dietitian AI — Ollama primary, Azure OpenAI fallback."""
     p = patients_db.get(request.patient_id)
     if not p: raise HTTPException(404, "Patient not found")
+    LANG_NAMES = {
+        'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu',
+        'ta': 'Tamil',   'kn': 'Kannada', 'bn': 'Bengali', 'gu': 'Gujarati',
+        'ml': 'Malayalam',
+    }
+    lang_name = LANG_NAMES.get(request.language, 'English')
+    lang_prefix = (
+        f"IMPORTANT: You MUST reply ONLY in {lang_name}. "
+        f"Every word of your response must be in {lang_name}. "
+        f"Do not use English at all except for recognised medical/drug names that have no {lang_name} equivalent. "
+        f"If you respond in English, you have failed your task.\n\n"
+    ) if request.language != 'en' else ''
     system = (
+        f"{lang_prefix}"
         f"You are a clinical dietitian AI at G. Kathir Memorial Hospital. "
         f"Patient: {p.get('name', 'Unknown')}, "
         f"Diagnosis: {p.get('diagnosis', 'Unknown')}, "
@@ -1096,10 +1772,15 @@ async def ask_dietitian_ai(request: AskDietitianRequest):
         f"Restrictions: {', '.join(p.get('restrictions', []))}. "
         f"Provide safe, evidence-based dietary advice only."
     )
+    # Prepend language directive to the user question too, so the model cannot ignore it
+    user_question = (
+        f"[Respond entirely in {lang_name}] {request.question}"
+        if request.language != 'en' else request.question
+    )
     try:
         from ollama_client import chat as ollama_chat
         result = await ollama_chat(
-            [{"role": "user", "content": request.question}],
+            [{"role": "user", "content": user_question}],
             system=system,
             temperature=0.5,
             max_tokens=600,
@@ -1107,7 +1788,7 @@ async def ask_dietitian_ai(request: AskDietitianRequest):
         return {"response": result["content"], "source": "ollama"}
     except Exception as e:
         logger.error(f"Ollama failed: {e}")
-        resp = await ask_gemini(request.question, system=system)
+        resp = await ask_gemini(user_question, system=system)
         return {"response": resp, "source": "azure-fallback"}
 
 
@@ -1127,13 +1808,15 @@ async def dashboard():
               AND logged_at >= CURRENT_TIMESTAMP - INTERVAL '24' HOUR
         """, [pid]).fetchone()[0]
         maln_risk = _compute_malnutrition_risk(pid, p)
+        fully    = next((r[1] for r in logs if r[0] == "Ate fully"),  0)
+        partially = next((r[1] for r in logs if r[0] == "Partially"), 0)
         overview.append({
             "id":               p["id"],
             "name":             p["name"],
             "diagnosis":        p["diagnosis"],
             "diet_stage":       p["diet_stage"],
             "calorie_target":   p["calorie_target"],
-            "compliance_percent": round(((total-refusals)/total*100) if total>0 else 100, 1),
+            "compliance_percent": round(((fully + 0.5 * partially) / total * 100) if total > 0 else 100, 1),
             "meals_logged":     total,
             "refusals":         refusals,
             "refusals_24h":     refusals_24h,
@@ -1166,9 +1849,86 @@ async def get_patient(patient_id: str):
     return patients_db[patient_id]
 
 
+class UpdatePatientRequest(BaseModel):
+    name:                Optional[str]        = None
+    age:                 Optional[int]        = None
+    gender:              Optional[str]        = None
+    diagnosis:           Optional[str]        = None
+    diet_stage:          Optional[str]        = None
+    calorie_target:      Optional[int]        = None
+    sodium_limit_mg:     Optional[float]      = None
+    potassium_limit_mg:  Optional[float]      = None
+    fluid_limit_ml:      Optional[float]      = None
+    restrictions:        Optional[List[str]]  = None
+    language:            Optional[str]        = None
+    language_name:       Optional[str]        = None
+    phone:               Optional[str]        = None
+    caregiver_phone:     Optional[str]        = None
+    ward:                Optional[str]        = None
+    bed:                 Optional[str]        = None
+    admitted_on:         Optional[str]        = None
+    attending_dietitian: Optional[str]        = None
+    protein_target_g:    Optional[int]        = None
+    carb_target_g:       Optional[int]        = None
+    allergies:           Optional[List[str]]  = None
+    notes:               Optional[str]        = None
+
+
+_PATIENTS_PATH = DATA_DIR / "patients.json"
+
+def _save_patients_json():
+    """Persist the in-memory patients_db back to data/patients.json (atomic write)."""
+    tmp = str(_PATIENTS_PATH) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(list(patients_db.values()), fh, ensure_ascii=False, indent=2)
+    import os as _os
+    _os.replace(tmp, str(_PATIENTS_PATH))
+
+
+@app.put("/api/v1/patients/{patient_id}", tags=["Dashboard"])
+async def update_patient(patient_id: str, req: UpdatePatientRequest):
+    """
+    Edit any patient field — changes are reflected immediately in ALL reports,
+    PDFs, WhatsApp messages, and the dashboard (persisted to patients.json).
+
+    Editable fields include language / language_name, so the discharge guide
+    and dietitian AI will automatically switch to the updated language.
+    """
+    if patient_id not in patients_db:
+        raise HTTPException(404, "Patient not found")
+
+    p = patients_db[patient_id]
+    updates = req.model_dump(exclude_none=True)
+
+    if not updates:
+        raise HTTPException(400, "No fields provided to update")
+
+    p.update(updates)
+
+    # Persist to disk so the next server restart picks up the edits
+    try:
+        _save_patients_json()
+    except Exception as exc:
+        logger.warning("Could not persist patients.json: %s", exc)
+
+    # Sync with WhatsApp module (it holds a separate reference)
+    _wa_module.patients_db = patients_db
+
+    # Broadcast so dashboard / kitchen screen refresh without a page reload
+    _sse_broadcast({
+        "type":           "patient_update",
+        "patient_id":     patient_id,
+        "patient_name":   p["name"],
+        "fields_updated": list(updates.keys()),
+        "timestamp":      datetime.now().isoformat(),
+    })
+
+    return {"status": "updated", "patient": p, "fields_updated": list(updates.keys())}
+
+
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "CAP³S",
+    return {"status": "healthy", "service": "NutriGuide",
             "modules": {"azure_openai": "active", "duckdb": "active",
                         "pqc": "REAL Dilithium3 NIST FIPS 204" if PQC_AVAILABLE else "simulated",
                         "ollama": "active", "whatsapp": "active"},
@@ -1177,9 +1937,9 @@ async def health():
 
 def _demo_plan(pid, p, days):
     _base = {
-        "Renal":   {"dish_name": "Idli+Bottle Gourd Chutney",  "calories": 220, "protein_g": 8,  "carb_g": 38, "fat_g": 2, "sodium_mg": 180, "potassium_mg": 120, "compliance_status": "compliant", "violations": ""},
-        "Diabetes":{"dish_name": "Ragi Dosa+Ridge Gourd Sambar","calories": 280, "protein_g": 10, "carb_g": 48, "fat_g": 4, "sodium_mg": 200, "potassium_mg": 180, "compliance_status": "compliant", "violations": ""},
-        "Post":    {"dish_name": "Clear Broth+Barley Water",    "calories": 80,  "protein_g": 3,  "carb_g": 14, "fat_g": 1, "sodium_mg": 350, "potassium_mg": 80,  "compliance_status": "compliant", "violations": ""},
+        "Renal":   {"dish_name": "Idli+Bottle Gourd Chutney",  "ingredients": ["Rice flour", "Bottle gourd", "Coconut chutney"],  "calories": 220, "protein_g": 8,  "carb_g": 38, "fat_g": 2, "sodium_mg": 180, "potassium_mg": 120, "compliance_status": "compliant", "violations": ""},
+        "Diabetes":{"dish_name": "Ragi Dosa+Ridge Gourd Sambar","ingredients": ["Ragi flour", "Ridge gourd", "Toor dal", "Curd"], "calories": 280, "protein_g": 10, "carb_g": 48, "fat_g": 4, "sodium_mg": 200, "potassium_mg": 180, "compliance_status": "compliant", "violations": ""},
+        "Post":    {"dish_name": "Clear Broth+Barley Water",    "ingredients": ["Vegetable broth", "Barley"],  "calories": 80,  "protein_g": 3,  "carb_g": 14, "fat_g": 1, "sodium_mg": 350, "potassium_mg": 80,  "compliance_status": "compliant", "violations": ""},
     }
     k = next((k for k in _base if k in p["diagnosis"]), "Post")
     def _meal(meal_time):
@@ -1257,7 +2017,7 @@ async def download_weekly_report(patient_id: str, start_date: Optional[str] = No
     try:
         pdf_bytes = await build_weekly_nutrition_report(patient_id, patients_db, con, start_date, end_date, pqc_sign=pqc_sign)
         p = patients_db.get(patient_id, {})
-        filename = f"CAP3S_NutritionReport_{p.get('name','Patient').replace(' ','_')}_{date.today()}.pdf"
+        filename = f"NutriGuide_NutritionReport_{p.get('name','Patient').replace(' ','_')}_{date.today()}.pdf"
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
@@ -1317,7 +2077,7 @@ async def pqc_benchmark():
             "nist_standard": "FIPS 204 (Dilithium3)",
             "aggregate_layers": "Dilithium3 + HMAC-SHA3-256 + UOV-sim",
         },
-        "clinical_use": "Every dietary prescription update in CAP³S is signed with this algorithm",
+        "clinical_use": "Every dietary prescription update in NutriGuide is signed with this algorithm",
         "message": "Quantum computers cannot forge a single patient's diet order. Ever."
     }
 
@@ -1495,33 +2255,37 @@ class TrayVisionRequest(BaseModel):
 @app.post("/api/v1/tray/analyze", tags=["SOTA: Tray Vision"])
 async def analyze_food_tray(request: TrayVisionRequest):
     """
-    SOTA Feature 1 — Zero-Click Tray Auditing
-    Nurse snaps photo of returned food tray → GPT-4o Vision calculates % consumed.
-    Stolen from NeoPulse emotion_engine.py (multimodal image pipeline).
-    Original: webcam frame → 7-emotion Ekman classification.
-    Now: food tray photo → {consumption_level, percent_eaten, macros_consumed, notes}
+    SOTA Feature 1 — Two-Stage Zero-Click Tray Auditing
 
-    JUDGE PITCH:
-    "We eliminated manual nursing data entry. Our Multimodal Vision Agent
-    calculates exact macronutrient consumption from a single photo of the
-    returned food tray, updating the patient's EHR metabolic profile instantly."
+    Stage 1: EfficientNet-B4 (Kaludi/food-category-classification-v2.0)
+             Identifies WHAT food is on the tray (89 Indian hospital food classes).
+    Stage 2: GPT-4o Vision estimates HOW MUCH was consumed, given Stage 1 context.
+
+    "We don't trust the LLM alone. A dedicated vision model first identifies
+    the food, then the LLM estimates consumption — two-stage multimodal pipeline."
     """
     if request.patient_id not in patients_db:
         raise HTTPException(404, "Patient not found")
 
     p = patients_db[request.patient_id]
 
-    # Build GPT-4o Vision prompt
+    # ── STAGE 1: EfficientNet-B4 food classification ──────────────────────────
+    food_classification = await classify_food_image(request.image_base64)
+    detected_items_str = ", ".join(food_classification.get("detected_items", []))
+
+    # ── STAGE 2: GPT-4o Vision — consumption estimation with Stage 1 context ──
     vision_prompt = f"""You are a clinical nutrition AI analyzing a hospital food tray photo.
 
 Patient: {p['name']}, Diagnosis: {p['diagnosis']}
 Meal: {request.meal_time}, Original dish: {request.original_dish or 'unknown'}
 Original calories: {request.original_calories or 'unknown'} kcal
 
-Analyze the returned food tray image and estimate:
-1. What percentage of each food item was consumed (0-100%)
+Stage 1 food classifier identified these items on the tray: {detected_items_str or 'unknown'}
+
+Now estimate:
+1. What percentage of each detected food item was consumed (0-100%)
 2. Overall consumption level: "Ate fully" (>80%), "Partially" (20-80%), or "Refused" (<20%)
-3. Any clinical observations (e.g., patient avoided certain items, liquid consumed but solid left)
+3. Any clinical observations
 
 Return STRICT JSON only:
 {{
@@ -1539,22 +2303,20 @@ Return STRICT JSON only:
     try:
         from gemini_client import ask_vision
         raw = await ask_vision(request.image_base64, vision_prompt, timeout=30.0)
-        # Strip markdown code fences if the model wraps JSON in ```json ... ```
         raw = raw.strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         result = json.loads(raw)
 
     except Exception as e:
-        # Graceful fallback — demo mode with simulated analysis
+        # Graceful fallback — use Stage 1 detected items in the simulated result
+        detected = food_classification.get("detected_items", ["Rice / Grain", "Dal / Protein", "Vegetables"])
         result = {
             "consumption_level": "Partially",
             "percent_consumed": 62,
             "items_analysis": [
-                {"item": "Rice / Grain", "estimated_consumed_pct": 45},
-                {"item": "Dal / Protein", "estimated_consumed_pct": 80},
-                {"item": "Vegetables", "estimated_consumed_pct": 70},
-                {"item": "Chapati / Bread", "estimated_consumed_pct": 50}
+                {"item": det, "estimated_consumed_pct": [45, 80, 70, 50][i % 4]}
+                for i, det in enumerate(detected + ["Accompaniments"])
             ],
             "calories_consumed_estimate": round((request.original_calories or 500) * 0.62, 0),
             "protein_consumed_g": round((p.get("protein_target_g", 60) / 3) * 0.62, 1),
@@ -1580,15 +2342,18 @@ Return STRICT JSON only:
     """, [request.patient_id]).fetchone()[0]
 
     return {
-        "patient_id": request.patient_id,
-        "patient_name": p["name"],
-        "meal_time": request.meal_time,
-        "log_date": request.log_date,
-        "vision_analysis": result,
-        "auto_logged": True,
-        "dietitian_alert": recent_refused >= 2,
-        "alert_message": f"⚠️ {p['name']} has refused {recent_refused} meals in 24 hours — dietitian review required." if recent_refused >= 2 else None,
-        "source": "azure_vision_multimodal"
+        "patient_id":       request.patient_id,
+        "patient_name":     p["name"],
+        "meal_time":        request.meal_time,
+        "log_date":         request.log_date,
+        "food_classification": food_classification,          # ← Stage 1 EfficientNet output
+        "vision_analysis":  result,                         # ← Stage 2 Gemini output
+        "pipeline":         "two_stage_multimodal",
+        "pipeline_detail":  "Stage1=EfficientNet-B4 food ID → Stage2=GPT-4o Vision consumption",
+        "auto_logged":      True,
+        "dietitian_alert":  recent_refused >= 2,
+        "alert_message":    f"⚠️ {p['name']} has refused {recent_refused} meals in 24 hours — dietitian review required." if recent_refused >= 2 else None,
+        "source":           "two_stage_multimodal_pipeline"
     }
 
 @app.get("/api/v1/tray/demo", tags=["SOTA: Tray Vision"])
@@ -1619,24 +2384,43 @@ async def tray_vision_demo(patient_id: str, meal_time: str = "lunch"):
         scenario["consumption_level"], datetime.now(), notes_with_flag
     ])
 
+    # Demo food classification — deterministic by patient
+    demo_food_maps = {
+        "P001": {"detected_items": ["Steamed Rice", "Dal Makhni", "Sabzi"],
+                 "top_predictions": [{"label": "Steamed Rice", "score": 0.61}, {"label": "Dal Makhni", "score": 0.24}, {"label": "Sabzi", "score": 0.15}]},
+        "P002": {"detected_items": ["Soft Khichdi", "Boiled Vegetables", "Curd"],
+                 "top_predictions": [{"label": "Soft Khichdi", "score": 0.58}, {"label": "Boiled Vegetables", "score": 0.28}, {"label": "Curd", "score": 0.14}]},
+        "P003": {"detected_items": ["Moong Dal Soup", "Rice Gruel", "Coconut Water"],
+                 "top_predictions": [{"label": "Moong Dal Soup", "score": 0.64}, {"label": "Rice Gruel", "score": 0.25}, {"label": "Coconut Water", "score": 0.11}]},
+    }
+    food_clf_demo = {
+        **demo_food_maps.get(patient_id, demo_food_maps["P001"]),
+        "model":          "Kaludi/food-category-classification-v2.0",
+        "model_display":  AI_MODEL_NAMES["food_classifier"],
+        "inference_ms":   47.3,
+        "source":         "demo_mode",
+        "pipeline_stage": "1_of_2",
+    }
+
     return {
-        "patient_id": patient_id,
-        "patient_name": p["name"],
-        "meal_time": meal_time,
-        "log_date": log_date,
+        "patient_id":        patient_id,
+        "patient_name":      p["name"],
+        "meal_time":         meal_time,
+        "log_date":          log_date,
+        "food_classification": food_clf_demo,
         "vision_analysis": {
             **scenario,
             "items_analysis": [
-                {"item": "Rice / Grain", "estimated_consumed_pct": max(0, scenario["percent_consumed"] - 20)},
-                {"item": "Dal / Protein", "estimated_consumed_pct": min(100, scenario["percent_consumed"] + 15)},
-                {"item": "Vegetables", "estimated_consumed_pct": scenario["percent_consumed"]},
-                {"item": "Accompaniments", "estimated_consumed_pct": scenario["percent_consumed"]}
+                {"item": det, "estimated_consumed_pct": [max(0, scenario["percent_consumed"] - 20), min(100, scenario["percent_consumed"] + 15), scenario["percent_consumed"], scenario["percent_consumed"]][i % 4]}
+                for i, det in enumerate(food_clf_demo["detected_items"] + ["Accompaniments"])
             ],
             "confidence": "demo_simulation",
         },
-        "auto_logged": True,
-        "source": "demo_mode",
-        "note": "POST /api/v1/tray/analyze with image_base64 for live GPT-4o Vision analysis"
+        "pipeline":          "two_stage_multimodal",
+        "pipeline_detail":   "Stage1=EfficientNet-B4 food ID → Stage2=GPT-4o Vision consumption",
+        "auto_logged":       True,
+        "source":            "demo_mode",
+        "note":              "POST /api/v1/tray/analyze with image_base64 for live two-stage analysis"
     }
 
 
@@ -1655,7 +2439,7 @@ async def tray_vision_demo(patient_id: str, meal_time: str = "lunch"):
 
 # Load interaction knowledge base
 _fdi_path = DATA_DIR / "food_drug_interactions.json"
-_fdi_data = json.loads(_fdi_path.read_text()) if _fdi_path.exists() else {"interactions": []}
+_fdi_data = json.loads(_fdi_path.read_text(encoding="utf-8")) if _fdi_path.exists() else {"interactions": []}
 _fdi_map = _fdi_data["interactions"]
 
 @app.get("/api/v1/food-drug/patient/{patient_id}", tags=["SOTA: Food-Drug GNN"])
@@ -1673,7 +2457,7 @@ async def get_food_drug_interactions(patient_id: str):
 
     p = patients_db[patient_id]
     medications = p.get("medications", [])
-    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text())["ingredients"]
+    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text(encoding="utf-8"))["ingredients"]
 
     # Build interaction graph nodes and edges
     nodes = []
@@ -1708,7 +2492,7 @@ async def get_food_drug_interactions(patient_id: str):
             continue
 
         # Add food nodes + edges
-        for food_name in conflicting_foods[:3]:  # cap at 3 per drug-food pair
+        for food_name in conflicting_foods[:5]:  # cap at 5 per drug-food pair
             fnid = f"food_{food_name.replace(' ', '_').replace('/', '_')}"
             if fnid not in seen_nodes:
                 ingredient_data = next((i for i in kitchen if i["name"] == food_name), {})
@@ -1777,7 +2561,8 @@ async def check_meal_food_drug(request: FoodDrugMealCheckRequest):
             # Simple tag-based match — in production would use embedding similarity
             item_lower = item.lower()
             for tag in interaction["food_tags"]:
-                if tag.lower() in item_lower or item_lower in tag.lower():
+                _pat = re.compile(r'\b' + re.escape(tag.lower()) + r'\b')
+                if _pat.search(item_lower):
                     flags.append({
                         "ingredient": item,
                         "drug": interaction["drug"],
@@ -1790,12 +2575,43 @@ async def check_meal_food_drug(request: FoodDrugMealCheckRequest):
 
     flags.sort(key=lambda x: {"HIGH": 0, "MODERATE": 1, "LOW": 2, "MONITOR": 3}[x["severity"]])
 
+    # ── BioBERT fallback: predict severity for items NOT in static knowledge graph ──
+    # Collect (drug, food) pairs that had NO match in the JSON lookup
+    known_drug_food_pairs = {
+        (interaction["drug"], tag)
+        for interaction in _fdi_map
+        for tag in interaction["food_tags"]
+    }
+    patient_drugs = [m["name"] for m in patients_db[request.patient_id].get("medications", [])]
+    biobert_predictions = []
+    for drug in patient_drugs:
+        for item in request.meal_items:
+            pair_known = any(
+                drug == interaction["drug"] and any(tag in item.lower() for tag in interaction["food_tags"])
+                for interaction in _fdi_map
+            )
+            if not pair_known:
+                pred = await predict_drug_food_severity(drug, item)
+                if pred["severity"] in ("HIGH", "MODERATE"):
+                    biobert_predictions.append({
+                        "drug":        pred["drug"],
+                        "food":        pred["food"],
+                        "severity":    pred["severity"],
+                        "confidence":  pred["confidence"],
+                        "model":       pred["model"],
+                        "inference_ms": pred["inference_ms"],
+                        "source":      "biobert_novel_pair",
+                    })
+
     return {
-        "patient_id": request.patient_id,
-        "meal_items": request.meal_items,
-        "flags": flags,
-        "approved": len([f for f in flags if f["severity"] == "HIGH"]) == 0,
-        "requires_override": len([f for f in flags if f["severity"] == "HIGH"]) > 0
+        "patient_id":        request.patient_id,
+        "meal_items":        request.meal_items,
+        "flags":             flags,
+        "approved":          len([f for f in flags if f["severity"] == "HIGH"]) == 0,
+        "requires_override": len([f for f in flags if f["severity"] == "HIGH"]) > 0,
+        "biobert_novel_predictions": biobert_predictions,
+        "biobert_model":     "BioBERT-PubMed (dmis-lab/biobert-base-cased-v1.2)",
+        "pipeline_note":     "Known pairs → static GNN knowledge graph | Unknown pairs → BioBERT NLI severity prediction",
     }
 
 
@@ -1822,7 +2638,7 @@ async def kitchen_burn_rate_analysis(forecast_days: int = 3):
     Compares against kitchen_inventory.json stock.
     Flags shortfalls 48h before they happen — proactive procurement.
     """
-    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text())["ingredients"]
+    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text(encoding="utf-8"))["ingredients"]
     stock_map = {i["name"]: i.get("available_kg") or i.get("available_liters", 0) for i in kitchen}
 
     # Get active meal plans from DuckDB
@@ -1906,7 +2722,7 @@ async def kitchen_burn_rate_analysis(forecast_days: int = 3):
 # ═══════════════════════════════════════════════════════════════════════════════
 # PLATE WASTE ANALYTICS — DuckDB aggregation per meal type + ingredient category
 # JUDGE PITCH:
-#  "CAP³S found that post-surgical patients refuse dinner 78% of days.
+#  "NutriGuide found that post-surgical patients refuse dinner 78% of days.
 #   Recommendation: replace solid dinner with high-protein liquid supplement.
 #   Estimated annual savings for a 100-bed hospital: ₹2.3L."
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1924,7 +2740,7 @@ async def get_waste_analytics():
     Groups by meal_time and patient diagnosis to surface actionable patterns.
     Flags any category with waste_rate > 40% for portion-reduction recommendation.
     """
-    WASTE_RATES = {"Ate fully": 0.10, "Partially": 0.55, "Refused": 1.00}
+    WASTE_RATES = {"Ate fully": 0.10, "Partially": 0.50, "Refused": 1.00}
 
     # ── Aggregate waste by meal_time from DuckDB ──────────────────────────────
     rows = con.execute("""
@@ -2049,7 +2865,7 @@ async def get_waste_analytics():
 @app.get("/api/v1/kitchen/inventory-status", tags=["SOTA: Kitchen Burn-Rate"])
 async def kitchen_inventory_status():
     """Quick stock level overview for the kitchen dashboard widget."""
-    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text())["ingredients"]
+    kitchen = json.loads((DATA_DIR / "kitchen_inventory.json").read_text(encoding="utf-8"))["ingredients"]
     by_category = {}
     for ing in kitchen:
         cat = ing.get("category", "Other")
@@ -2115,7 +2931,7 @@ async def sign_knowledge_base():
             "title": doc["title"],
             "source": doc["source"],
             "content_hash": __import__("hashlib").sha3_256(doc["content"].encode()).hexdigest()[:16],
-            "dilithium3_signature": sig[:32] + "...",
+            "dilithium3_signature": "d3:" + __import__("hashlib").sha3_256(sig.encode()).hexdigest()[:32] + "...",
             "signature_algorithm": "CRYSTALS-Dilithium3 (NIST FIPS 204)",
             "signed_at": datetime.now().isoformat(),
             "verifiable": True
@@ -2178,7 +2994,7 @@ async def _pq_verified_rag(patient_id: str, question: str):
         "patient_id": patient_id,
         "question": question,
         "answer": result.get("answer", ""),
-        "answer_signature": answer_sig[:32] + "...",
+        "answer_signature": "d3:" + __import__("hashlib").sha3_256(answer_sig.encode()).hexdigest()[:32] + "...",
         "signed_citations": signed_citations,
         "total_citations": len(signed_citations),
         "security": {
@@ -2238,3 +3054,202 @@ async def transcribe_voice(audio: UploadFile = FastAPIFile(...)):
     except Exception as e:
         logger.error("Voice transcription failed: %s", e)
         raise HTTPException(500, f"Transcription failed: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TTS  POST /api/v1/voice/tts  — Edge-TTS neural voices (Indian languages)
+# ══════════════════════════════════════════════════════════════════════════════
+class TTSRequest(BaseModel):
+    text: str
+    language: str = "en"
+
+@app.post("/api/v1/voice/tts", tags=["AI Assistant"])
+async def text_to_speech(req: TTSRequest):
+    """
+    Convert text to speech using Microsoft Edge-TTS neural voices.
+    Supports 9 Indian languages. Returns base64-encoded MP3 audio.
+    """
+    import base64 as _b64
+
+    # Edge-TTS neural voices for Indian languages
+    _VOICES: dict[str, str] = {
+        "en":  "en-IN-NeerjaNeural",
+        "hi":  "hi-IN-SwaraNeural",
+        "mr":  "mr-IN-AarohiNeural",
+        "te":  "te-IN-ShrutiNeural",
+        "ta":  "ta-IN-PallaviNeural",
+        "kn":  "kn-IN-SapnaNeural",
+        "bn":  "bn-IN-TanishaaNeural",
+        "gu":  "gu-IN-DhwaniNeural",
+        "pa":  "hi-IN-SwaraNeural",   # Punjabi fallback → Hindi
+        "ml":  "ml-IN-SobhanaNeural",
+    }
+
+    try:
+        import edge_tts
+    except ImportError:
+        raise HTTPException(503, "edge-tts not installed. Run: pip install edge-tts==6.1.12")
+
+    voice = _VOICES.get(req.language, _VOICES["en"])
+    text  = req.text.strip()[:3000]           # hard cap to avoid huge payloads
+    if not text:
+        raise HTTPException(400, "text is empty")
+
+    try:
+        communicate = edge_tts.Communicate(text, voice)
+        audio_bytes = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_bytes += chunk["data"]
+
+        if not audio_bytes:
+            raise RuntimeError("edge-tts returned no audio")
+
+        return {"audio_base64": _b64.b64encode(audio_bytes).decode(), "voice": voice}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("TTS failed: %s", e)
+        raise HTTPException(500, f"TTS failed: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# OLLAMA GPU SUMMARIZER — plain-language explanation of clinical graph data
+# Called by FoodDrugGraph and RestrictionConflictGraph components when
+# users click "Explain in plain language (GPU)"
+# ══════════════════════════════════════════════════════════════════════════════
+
+class OllamaSummarizeRequest(BaseModel):
+    context_type: str   # "food_drug" | "restrictions"
+    patient_id: str
+    data: dict
+
+
+@app.post("/api/v1/ollama/summarize", tags=["AI Summary"])
+async def ollama_summarize(request: OllamaSummarizeRequest):
+    """
+    GPU-accelerated Ollama plain-language summary of clinical graph data.
+
+    context_type="food_drug"    — explains medication x food interaction graph
+    context_type="restrictions" — explains dietary restriction conflict graph
+
+    Primary: Ollama (OLLAMA_NUM_GPU=-1, auto GPU acceleration)
+    Fallback: Azure OpenAI GPT-4o
+    """
+    p = patients_db.get(request.patient_id)
+    patient_name = p["name"] if p else "the patient"
+    diagnosis    = p["diagnosis"] if p else "unknown diagnosis"
+
+    if request.context_type == "food_drug":
+        interactions = request.data.get("interactions", [])
+        if not interactions:
+            # Try to pull from the graph edges
+            edges = request.data.get("edges", [])
+            interactions = [
+                {
+                    "drug":      e.get("source", "unknown drug").replace("drug_", ""),
+                    "food":      e.get("target", "unknown food").replace("food_", ""),
+                    "severity":  e.get("severity", "?"),
+                    "mechanism": e.get("mechanism", ""),
+                    "effect":    e.get("effect", e.get("action", "")),
+                }
+                for e in edges[:12]
+            ]
+
+        lines = []
+        for ix in interactions[:12]:
+            drug = ix.get("drug", ix.get("drug_a", "Drug")).replace("drug_", "")
+            food = ix.get("food", ix.get("drug_b", "Food")).replace("food_", "")
+            sev  = ix.get("severity", "?")
+            mech = ix.get("mechanism", "") or ix.get("effect", "")
+            lines.append(f"- {drug.title()} + {food.title()}: [{sev}] {mech}")
+
+        plan_text = "\n".join(lines) if lines else "No specific interactions identified."
+
+        prompt = (
+            f"You are a hospital dietitian explaining drug-food interactions to a bedside nurse.\n"
+            f"Patient: {patient_name} | Diagnosis: {diagnosis}\n\n"
+            f"Their medication-food interaction profile:\n{plan_text}\n\n"
+            f"In 3-4 clear sentences explain:\n"
+            f"1. The most dangerous interaction and WHY it matters clinically\n"
+            f"2. What foods the nurse must keep away from this patient's tray\n"
+            f"3. One practical action for bedside care\n"
+            f"Use simple everyday language — no medical jargon. Be direct and actionable."
+        )
+
+    elif request.context_type == "restrictions":
+        restrictions = request.data.get("restrictions", [])
+        conflicts    = request.data.get("conflicts", [])
+
+        restr_text = ", ".join(restrictions) if restrictions else "none listed"
+        conflict_lines = []
+        for c in conflicts[:8]:
+            a = c.get("source", c.get("a", "?"))
+            b = c.get("target", c.get("b", "?"))
+            shared = c.get("shared", c.get("label", "?"))
+            danger = c.get("danger", "warn")
+            conflict_lines.append(
+                f"- '{a}' and '{b}' both ban '{shared}' [{danger.upper()}]"
+            )
+
+        conflicts_text = "\n".join(conflict_lines) if conflict_lines else "No direct conflicts detected."
+
+        prompt = (
+            f"You are a hospital dietitian explaining dietary restrictions to a nurse.\n"
+            f"Patient: {patient_name} | Diagnosis: {diagnosis}\n"
+            f"Active restrictions: {restr_text}\n\n"
+            f"Overlapping restriction conflicts:\n{conflicts_text}\n\n"
+            f"In 3-4 clear sentences explain:\n"
+            f"1. What this patient absolutely cannot eat and the single most important reason\n"
+            f"2. What the overlapping restrictions mean for the kitchen — which combinations are tricky\n"
+            f"3. One safe food item the kitchen can always serve this patient\n"
+            f"Use simple everyday language — no jargon. Be direct and practical."
+        )
+
+    else:
+        raise HTTPException(400, "context_type must be 'food_drug' or 'restrictions'")
+
+    system = (
+        "You are a clinical dietitian. Explain medical concepts in simple, clear language "
+        "for bedside nurses with no nutrition background. Never use jargon. "
+        "Always be direct, practical, and actionable. Maximum 4 sentences."
+    )
+
+    # ── Primary: Ollama with GPU acceleration ─────────────────────────────────
+    try:
+        from ollama_client import chat as ollama_chat
+        result = await ollama_chat(
+            [{"role": "user", "content": prompt}],
+            system=system,
+            max_tokens=350,
+            temperature=0.4,
+        )
+        summary = result.get("content", "").strip()
+        if not summary:
+            raise ValueError("Ollama returned empty response")
+        return {
+            "summary":    summary,
+            "model_used": result.get("model", "ollama"),
+            "gpu_used":   result.get("gpu_used", False),
+            "time_ms":    result.get("time_ms", 0),
+            "gpu_note":   f"GPU-accelerated via Ollama (OLLAMA_NUM_GPU={OLLAMA_NUM_GPU})",
+            "source":     "ollama",
+        }
+    except Exception as ollama_err:
+        logger.warning(f"Ollama summarize failed: {ollama_err} — falling back to Azure")
+
+    # ── Fallback: Azure OpenAI ────────────────────────────────────────────────
+    try:
+        summary = await ask_gemini(prompt, system=system, max_tokens=350)
+        return {
+            "summary":    summary or "Summary unavailable — configure Ollama or Azure OpenAI.",
+            "model_used": "azure_gpt4o",
+            "gpu_used":   False,
+            "time_ms":    0,
+            "gpu_note":   "Azure GPT-4o cloud inference (Ollama unavailable)",
+            "source":     "azure_fallback",
+        }
+    except Exception as azure_err:
+        logger.error(f"Azure fallback also failed: {azure_err}")
+        raise HTTPException(503, "Both Ollama and Azure OpenAI are unavailable. Please start Ollama: ollama serve")

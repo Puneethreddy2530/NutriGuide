@@ -19,19 +19,31 @@ def fix_mojibake(text: str) -> str:
     return "".join(result)
 
 
-def fix_jsx(rel):
-    path = os.path.join(ROOT, rel)
-    with open(path, "r", encoding="utf-8-sig") as f:   # utf-8-sig strips BOM
+def fix_source(path):
+    """Strip BOM and fix mojibake in any source file (.jsx/.js/.ts/.css/.py)."""
+    with open(path, "r", encoding="utf-8-sig") as f:
         content = f.read()
     fixed = fix_mojibake(content)
     with open(path, "w", encoding="utf-8") as f:
         f.write(fixed)
     diff = sum(1 for a, b in zip(content.splitlines(), fixed.splitlines()) if a != b)
-    print(f"  FIXED  {rel}  ({diff} lines changed, BOM stripped)")
+    rel = os.path.relpath(path, ROOT)
+    print(f"  FIXED  {rel}  ({diff} lines changed)")
 
 
-def fix_css(rel):
-    path = os.path.join(ROOT, rel)
+def fix_bom_only(path):
+    """For JSON: strip BOM only — skip mojibake which could corrupt valid JSON."""
+    with open(path, "rb") as f:
+        raw = f.read()
+    if raw[:3] == b"\xef\xbb\xbf":
+        with open(path, "wb") as f:
+            f.write(raw[3:])
+        rel = os.path.relpath(path, ROOT)
+        print(f"  BOM    {rel}  (BOM stripped)")
+
+
+def fix_index_css(path):
+    """Special handler for index.css: extract from PS heredoc if present, then fix mojibake."""
     with open(path, "r", encoding="utf-8-sig", errors="replace") as f:
         raw_lines = f.read().splitlines()
 
@@ -44,44 +56,70 @@ def fix_css(rel):
             if HEREDOC_OPEN in line:
                 inside = True
             continue
-
-        # Strip PowerShell continuation prefix ">> " or ">>"
         if line.startswith(">> "):
             stripped = line[3:]
         elif line.startswith(">>"):
             stripped = line[2:]
         else:
             stripped = line
-
         if stripped.strip() == HEREDOC_CLOSE:
             break
-
         css_lines.append(stripped)
 
-    if not css_lines:
-        print(f"  WARN   {rel}: no heredoc found — file may already be clean, skipping")
-        return
+    if css_lines:
+        css_text = fix_mojibake("\n".join(css_lines))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(css_text)
+        rel = os.path.relpath(path, ROOT)
+        print(f"  FIXED  {rel}  ({len(css_lines)} lines from PS heredoc, mojibake fixed)")
+    else:
+        # No heredoc wrapper — treat as a normal source file
+        fix_source(path)
 
-    css_text = fix_mojibake("\n".join(css_lines))
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(css_text)
-    print(f"  FIXED  {rel}  ({len(css_lines)} lines extracted from PS heredoc, mojibake fixed)")
 
+CODE_EXTS = {'.jsx', '.js', '.ts', '.tsx', '.css', '.py'}
+JSON_EXTS  = {'.json'}
+SKIP_DIRS  = {'node_modules', '__pycache__', '.venv', 'dist', 'build', '.git'}
 
-print("=== CAP3S encoding fixer ===")
-fix_jsx("frontend/src/App.jsx")
-fix_jsx("frontend/src/components/LandingPage.jsx")
-fix_css("frontend/src/index.css")
+print("=== NutriGuide encoding fixer (full scan) ===\n")
+total = 0
+for scan_root in [os.path.join(ROOT, 'frontend'), os.path.join(ROOT, 'backend')]:
+    if not os.path.isdir(scan_root):
+        continue
+    for dirpath, dirnames, filenames in os.walk(scan_root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        for fname in filenames:
+            fpath = os.path.join(dirpath, fname)
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in CODE_EXTS:
+                if fname == 'index.css':
+                    fix_index_css(fpath)
+                else:
+                    fix_source(fpath)
+                total += 1
+            elif ext in JSON_EXTS:
+                fix_bom_only(fpath)
+                total += 1
 
-# Quick verification
+# Verification: flag any remaining BOMs
 print("\n=== Verification ===")
-for rel in ["frontend/src/App.jsx", "frontend/src/index.css",
-            "frontend/src/components/LandingPage.jsx"]:
-    path = os.path.join(ROOT, rel)
-    with open(path, "rb") as f:
-        head = f.read(12)
-    has_bom = head[:3] == b"\xef\xbb\xbf"
-    size = os.path.getsize(path)
-    print(f"  {'BOM!' if has_bom else 'OK  '}  {rel}  ({size} bytes)  first={head.hex()}")
+bom_count = 0
+for scan_root in [os.path.join(ROOT, 'frontend'), os.path.join(ROOT, 'backend')]:
+    if not os.path.isdir(scan_root):
+        continue
+    for dirpath, dirnames, filenames in os.walk(scan_root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        for fname in filenames:
+            fpath = os.path.join(dirpath, fname)
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in CODE_EXTS | JSON_EXTS:
+                with open(fpath, "rb") as f:
+                    head = f.read(3)
+                if head == b"\xef\xbb\xbf":
+                    rel = os.path.relpath(fpath, ROOT)
+                    print(f"  BOM!  {rel}")
+                    bom_count += 1
 
-print("\nDone.")
+if bom_count == 0:
+    print("  All clear — no BOMs found.")
+print(f"\nDone — {total} files processed.")

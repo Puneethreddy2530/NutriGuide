@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 
 const CAROUSEL_ITEMS = [
-  { id: "fitness",     label: "FITNESS" },
-  { id: "medicines",   label: "MEDICINES" },
-  { id: "mood",        label: "MOOD" },
-  { id: "consistency", label: "CONSISTENCY" },
+  { id: "tray-vision",  label: "TRAY VISION" },
+  { id: "drug-food",    label: "DRUG-FOOD" },
+  { id: "compliance",   label: "COMPLIANCE" },
+  { id: "rag-pqc",      label: "RAG + PQC" },
 ];
 
 export default function LandingNavbar({ activeCarouselItem, onCarouselSwitch, onEnterApp }) {
@@ -22,10 +22,10 @@ export default function LandingNavbar({ activeCarouselItem, onCarouselSwitch, on
       padding: "0 40px",
       height: 60,
       background: scrolled
-        ? "rgba(3,3,8,0.95)"
-        : "rgba(3,3,8,0.0)",
+        ? "rgba(255,248,243,0.95)"
+        : "rgba(255,248,243,0.0)",
       backdropFilter: scrolled ? "blur(20px)" : "none",
-      borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
+      borderBottom: scrolled ? "1px solid rgba(0,0,0,0.07)" : "none",
       display: "flex", alignItems: "center", justifyContent: "space-between",
       transition: "background 0.35s ease, backdrop-filter 0.35s ease, border 0.35s ease",
       fontFamily: "'DM Mono', monospace",
@@ -34,19 +34,16 @@ export default function LandingNavbar({ activeCarouselItem, onCarouselSwitch, on
       <div style={{
         display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
       }} onClick={() => onCarouselSwitch?.(null)}>
-        <div style={{
+        <img src="/Final.jpg" alt="NutriGuide" style={{
           width: 30, height: 30, borderRadius: "50%",
-          background: "linear-gradient(135deg, rgba(96,165,250,0.3), rgba(167,139,250,0.3))",
-          border: "1px solid rgba(96,165,250,0.4)",
-          display: "flex", alignItems: "center", justifyContent: "center",
+          objectFit: "cover",
           boxShadow: "0 0 16px rgba(96,165,250,0.3)",
-        }}>
-          <span style={{ color: "#60a5fa", fontSize: 13, fontWeight: 700, fontFamily: "'Syne', sans-serif" }}>N</span>
-        </div>
+          border: "1px solid rgba(96,165,250,0.4)",
+        }} />
         <span style={{
-          fontSize: 16, fontWeight: 800, letterSpacing: 0.5, color: "rgba(255,255,255,0.9)",
-          fontFamily: "'Syne', sans-serif",
-        }}>NeoPulse</span>
+          fontSize: 16, fontWeight: 700, letterSpacing: 1.5, color: "var(--text)",
+          fontFamily: "'LEMONMILK', sans-serif",
+        }}>NutriGuide</span>
       </div>
 
       {/* Image switcher buttons */}
@@ -67,14 +64,14 @@ export default function LandingNavbar({ activeCarouselItem, onCarouselSwitch, on
                 letterSpacing: 3,
                 fontWeight: isActive ? 500 : 400,
                 fontFamily: "'DM Mono', monospace",
-                color: isActive ? "#60a5fa" : "rgba(255,255,255,0.3)",
+                color: isActive ? "var(--accent)" : "rgba(28,28,30,0.4)",
                 transition: "color 0.2s, background 0.2s",
               }}
               onMouseEnter={e => {
-                if (!isActive) e.currentTarget.style.color = "rgba(255,255,255,0.6)";
+                if (!isActive) e.currentTarget.style.color = "rgba(28,28,30,0.7)";
               }}
               onMouseLeave={e => {
-                if (!isActive) e.currentTarget.style.color = "rgba(255,255,255,0.3)";
+                if (!isActive) e.currentTarget.style.color = "rgba(28,28,30,0.4)";
               }}
             >
               {item.label}
@@ -88,23 +85,23 @@ export default function LandingNavbar({ activeCarouselItem, onCarouselSwitch, on
         onClick={onEnterApp}
         style={{
           padding: "9px 24px",
-          background: "linear-gradient(135deg, rgba(96,165,250,0.2), rgba(167,139,250,0.2))",
-          border: "1px solid rgba(96,165,250,0.35)", borderRadius: 8,
-          color: "#60a5fa", fontFamily: "'DM Mono', monospace",
+        background: "linear-gradient(135deg, rgba(8,145,178,0.12), rgba(124,58,237,0.12))",
+        border: "1px solid rgba(8,145,178,0.35)", borderRadius: 8,
+        color: "var(--accent)", fontFamily: "'DM Mono', monospace",
           fontSize: 9, letterSpacing: 3, fontWeight: 500,
           cursor: "pointer",
           transition: "all 0.2s",
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.background = "linear-gradient(135deg, rgba(96,165,250,0.3), rgba(167,139,250,0.3))";
-          e.currentTarget.style.boxShadow = "0 0 20px rgba(96,165,250,0.25)";
+          e.currentTarget.style.background = "linear-gradient(135deg, rgba(8,145,178,0.2), rgba(124,58,237,0.2))";
+          e.currentTarget.style.boxShadow = "0 0 20px rgba(8,145,178,0.2)";
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.background = "linear-gradient(135deg, rgba(96,165,250,0.2), rgba(167,139,250,0.2))";
+          e.currentTarget.style.background = "linear-gradient(135deg, rgba(8,145,178,0.12), rgba(124,58,237,0.12))";
           e.currentTarget.style.boxShadow = "none";
         }}
       >
-        ENTER APP →
+        LOGIN →
       </button>
     </nav>
   );

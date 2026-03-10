@@ -1263,21 +1263,21 @@ def get_lands_in_bbox(min_lat: float, max_lat: float, min_lng: float, max_lng: f
 
 
 if __name__ == "__main__":
-    print("ðŸ§ª Testing DuckDB Analytics Engine")
+    print("🧪 Testing DuckDB Analytics Engine")
     print("=" * 60)
     
     # Initialize
     init_duckdb()
     
     # Create sample data
-    print("\nðŸ“Š Creating sample disease data...")
+    print("\n📊 Creating sample disease data...")
     sample_data = create_sample_data(1000)
     
     # Sync data
     sync_disease_data(sample_data)
     
     # Test queries
-    print("\nðŸ“ˆ Testing analytics queries...")
+    print("\n📈 Testing analytics queries...")
     
     print("\n1. Disease Heatmap:")
     heatmap = get_disease_heatmap(30)

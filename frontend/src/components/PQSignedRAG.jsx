@@ -14,6 +14,27 @@ import { useState } from 'react'
 
 const ALGO_COLOR = '#8b5cf6'
 
+function renderMarkdown(text) {
+  if (!text) return null
+  return text.split('\n').map((line, i) => {
+    let content = line
+    let style = { marginBottom: 3 }
+    let prefix = ''
+    if (line.startsWith('### '))      { content = line.slice(4); style = { fontWeight: 700, fontSize: 13, marginTop: 8, marginBottom: 3 } }
+    else if (line.startsWith('## ')) { content = line.slice(3); style = { fontWeight: 700, fontSize: 15, marginTop: 10, marginBottom: 4 } }
+    else if (line.startsWith('# '))  { content = line.slice(2); style = { fontWeight: 800, fontSize: 16, marginTop: 10, marginBottom: 4 } }
+    else if (/^[-*] /.test(line))    { content = line.slice(2); prefix = '• '; style = { paddingLeft: 14, marginBottom: 3 } }
+    else if (line.trim() === '')     return <div key={i} style={{ height: 6 }} />
+    const parts = content.split(/(\*\*.*?\*\*|\*.*?\*)/g)
+    const inline = parts.map((p, j) => {
+      if (p.startsWith('**') && p.endsWith('**')) return <strong key={j}>{p.slice(2, -2)}</strong>
+      if (p.startsWith('*')  && p.endsWith('*'))  return <em key={j}>{p.slice(1, -1)}</em>
+      return p
+    })
+    return <div key={i} style={style}>{prefix}{inline}</div>
+  })
+}
+
 function SignatureBadge({ sig, verified = true }) {
   const [expanded, setExpanded] = useState(false)
   return (
@@ -27,7 +48,7 @@ function SignatureBadge({ sig, verified = true }) {
         transition: 'all 0.15s'
       }}
     >
-      🔐 {verified ? 'PQ-SIGNED' : 'SIGNING...'}
+      ⬡ {verified ? 'PQ-SIGNED' : 'SIGNING...'}
       {expanded && sig && (
         <span style={{ color: '#6d28d9', fontFamily: 'monospace', fontSize: 9 }}>
           {' '}{sig}
@@ -80,7 +101,7 @@ export default function PQSignedRAG({ patientId, initialQuestion = '' }) {
   return (
     <div style={s.card}>
       <div style={s.header}>
-        <span>🔐</span>
+        <span>⬡</span>
         <span>PQ-Signed Clinical RAG</span>
         <span style={s.badge}>DILITHIUM3 · NIST FIPS 204</span>
         <span style={{ ...s.badge, background: '#1a1030', color: '#c4b5fd' }}>NeoPulse Pattern</span>
@@ -89,7 +110,7 @@ export default function PQSignedRAG({ patientId, initialQuestion = '' }) {
       {/* Security banner */}
       <div style={{ background: 'rgba(139,92,246,0.07)', border: `1px solid ${ALGO_COLOR}44`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 12 }}>
         <div style={{ color: '#7c3aed', fontWeight: 700, marginBottom: 2 }}>
-          🛡 Every AI citation is cryptographically signed with CRYSTALS-Dilithium3
+          ▣ Every AI citation is cryptographically signed with CRYSTALS-Dilithium3
         </div>
         <div style={{ color: '#6d28d9', fontFamily: 'monospace' }}>
           Algorithm: NIST FIPS 204 · Pr[Forge] ≤ 2⁻¹²⁸ · Quantum-Safe
@@ -113,7 +134,7 @@ export default function PQSignedRAG({ patientId, initialQuestion = '' }) {
       {/* Result */}
       {loading && (
         <div style={{ textAlign: 'center', color: ALGO_COLOR, padding: '20px 0', fontSize: 13 }}>
-          🔬 Querying RAG · Signing citations with Dilithium3...
+          ◎ Querying RAG · Signing citations with Dilithium3...
         </div>
       )}
 
@@ -125,7 +146,7 @@ export default function PQSignedRAG({ patientId, initialQuestion = '' }) {
               <span style={{ color: 'var(--text3)', fontSize: 11, fontWeight: 600 }}>VERIFIED ANSWER</span>
               {result.answer_signature && <SignatureBadge sig={result.answer_signature} />}
             </div>
-            <div style={{ color: 'var(--text)', fontSize: 13, lineHeight: 1.6 }}>{result.answer}</div>
+            <div style={{ color: 'var(--text)', fontSize: 13, lineHeight: 1.6 }}>{renderMarkdown(result.answer)}</div>
           </div>
 
           {/* Signed citations */}
@@ -170,7 +191,7 @@ export default function PQSignedRAG({ patientId, initialQuestion = '' }) {
             style={{ ...s.btn, background: '#374151', fontSize: 12, padding: '8px 14px' }}
             onClick={signKnowledgeBase} disabled={signingKB}
           >
-            {signingKB ? 'Signing...' : '🔏 Sign Knowledge Base'}
+            {signingKB ? 'Signing...' : '▣ Sign Knowledge Base'}
           </button>
           <span style={{ color: '#475569', fontSize: 12 }}>
             Generate Dilithium3 manifest for all 10 clinical docs
@@ -186,7 +207,7 @@ export default function PQSignedRAG({ patientId, initialQuestion = '' }) {
               {signManifest.signed_chunks?.slice(0, 6).map((c, i) => (
                 <div key={i} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 6, padding: '4px 10px', fontSize: 11 }}>
                   <div style={{ color: '#6d28d9', fontWeight: 600 }}>{c.title?.slice(0, 25)}</div>
-                  <div style={{ color: '#7c3aed', fontFamily: 'monospace', fontSize: 9 }}>🔐 {c.dilithium3_signature}</div>
+                  <div style={{ color: '#7c3aed', fontFamily: 'monospace', fontSize: 9 }}>⬡ {c.dilithium3_signature}</div>
                 </div>
               ))}
             </div>

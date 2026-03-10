@@ -1,4 +1,4 @@
-﻿// HealthAdvisor.jsx — CAP³S Dietitian AI Advisor
+﻿// HealthAdvisor.jsx — NutriGuide Dietitian AI Advisor
 // Calls POST /api/v1/ask_dietitian_ai — no JWT, no undefined endpoints
 import { useState, useRef, useEffect } from 'react'
 import { VoiceMic, useVoiceInput } from './useVoiceInput'
@@ -60,7 +60,7 @@ function Bubble({ msg }) {
             }}>
               {msg.source.includes('gemini') ? '✦ Gemini' : '◐ Ollama'}
             </span>
-            <span>AI response · CAP³S clinical context</span>
+            <span>AI response · NutriGuide clinical context</span>
           </div>
         )}
       </div>
@@ -73,7 +73,7 @@ export default function HealthAdvisor({ patientId: externalPatientId }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hello! I\'m the CAP³S Health Advisor, powered by local Ollama with Gemini fallback. Ask me clinical nutrition questions about any patient.',
+      content: 'Hello! I\'m the NutriGuide Health Advisor, powered by local Ollama with Gemini fallback. Ask me clinical nutrition questions about any patient.',
     },
   ])
   const [input, setInput] = useState('')

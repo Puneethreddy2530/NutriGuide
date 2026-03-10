@@ -1,24 +1,24 @@
-﻿import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 
 /*
   BreathingExercise.jsx
-  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ─────────────────────
   Three.js particle sphere that expands/contracts with guided breathing.
   Particle color = real-time emotion state (from EmotionDetector WebSocket).
-  As user calms down, particles transition from chaotic â†’ ordered.
+  As user calms down, particles transition from chaotic → ordered.
   
   Uses local npm `three` package.
 */
 
-// â”€â”€ Breathing pattern presets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Breathing pattern presets ─────────────────────────────────────────────────
 const BREATH_PATTERNS = {
   box: {
     id: "box",
     name: "Box Breathing",
-    subtitle: "4 Â· 4 Â· 4 Â· 4",
+    subtitle: "4 · 4 · 4 · 4",
     description: "Balance stress & sharpen focus",
-    icon: "â–£",
+    icon: "▣",
     cycles: "4 cycles",
     color: "#60a5fa",
     recommendedFor: ["stressed", "anxious", "focused"],
@@ -32,9 +32,9 @@ const BREATH_PATTERNS = {
   "4-7-8": {
     id: "4-7-8",
     name: "4-7-8 Breathing",
-    subtitle: "4 Â· 7 Â· 8",
+    subtitle: "4 · 7 · 8",
     description: "Deep relaxation & better sleep",
-    icon: "â—Ž",
+    icon: "◎",
     cycles: "4 cycles",
     color: "#7c3aed",
     recommendedFor: ["anxious", "fatigued", "stressed"],
@@ -47,9 +47,9 @@ const BREATH_PATTERNS = {
   coherence: {
     id: "coherence",
     name: "Coherence Breathing",
-    subtitle: "6 Â· 6",
+    subtitle: "6 · 6",
     description: "Heart rate variability & deep calm",
-    icon: "â—‰",
+    icon: "◉",
     cycles: "6 cycles",
     color: "#059669",
     recommendedFor: ["calm", "focused", "dissociation"],
@@ -61,9 +61,9 @@ const BREATH_PATTERNS = {
   quick: {
     id: "quick",
     name: "Quick Calm",
-    subtitle: "4 Â· 4",
+    subtitle: "4 · 4",
     description: "Fast reset for acute stress",
-    icon: "â—Œ",
+    icon: "◌",
     cycles: "8 cycles",
     color: "#dc2626",
     recommendedFor: ["stressed", "anxious", "joy"],
@@ -74,7 +74,7 @@ const BREATH_PATTERNS = {
   },
 };
 
-// Default for backward compat â€” superseded by phasesRef at runtime
+// Default for backward compat — superseded by phasesRef at runtime
 const PHASES = BREATH_PATTERNS.box.phases;
 
 const EMOTION_COLORS = {
@@ -122,7 +122,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
     stressRef.current = stressScore;
   }, [emotion, stressScore]);
 
-  // â”€â”€ Three.js scene â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Three.js scene ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!active) return;
     if (!mountRef.current) return;
@@ -140,7 +140,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
     camera.position.z = 300;
 
-    // â”€â”€ Particle sphere â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Particle sphere ───────────────────────────────────────────────────────
     const positions  = new Float32Array(N_PARTICLES * 3);
     const origPos    = new Float32Array(N_PARTICLES * 3);
     const colors     = new Float32Array(N_PARTICLES * 3);
@@ -223,7 +223,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
     const particles = new THREE.Points(geo, mat);
     scene.add(particles);
 
-    // â”€â”€ Wireframe sphere (structural guide) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Wireframe sphere (structural guide) ───────────────────────────────────
     const wireColor = new THREE.Color(emotionColors[0]);
     const wireMat   = new THREE.MeshBasicMaterial({
       color:       wireColor,
@@ -237,7 +237,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
     );
     scene.add(wireSphere);
 
-    // â”€â”€ Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Animation ─────────────────────────────────────────────────────────────
     let t = 0;
 
     const animate = () => {
@@ -278,7 +278,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
       const posArr = geo.attributes.position.array;
       const colArr = geo.attributes.color.array;
 
-      // Target colors: blend from stressed-color â†’ calm-color based on calmness
+      // Target colors: blend from stressed-color → calm-color based on calmness
       const colorA = new THREE.Color(liveEmotionColors[0]);   // current emotion
       const colorB = new THREE.Color(EMOTION_COLORS.calm[0]);
       const blended = colorA.clone().lerp(colorB, calmness * phaseProgress * 0.3);
@@ -353,7 +353,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
     };
   }, [active]);
 
-  // â”€â”€ Countdown before start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Countdown before start ──────────────────────────────────────────────────
   const clearCountdown = useCallback(() => {
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
@@ -418,7 +418,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
       justifyContent: "center",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
         @keyframes fadeIn   { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
         @keyframes pulse    { 0%,100%{opacity:0.5} 50%{opacity:0.15} }
         @keyframes countdown{ 0%{transform:scale(1.3);opacity:0} 30%{opacity:1} 100%{transform:scale(0.8);opacity:0} }
@@ -477,7 +477,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
         textAlign: "center", zIndex: 2, pointerEvents: "none",
       }}>
         <div style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontStyle: "italic",
           fontSize: 28, fontWeight: 700,
           color: "rgba(255,255,255,0.88)",
@@ -628,7 +628,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
             letterSpacing: 0.5, marginBottom: 20, lineHeight: 1.6,
             fontFamily: "'DM Mono', monospace", textAlign: "center",
           }}>
-            {activePat.description} Â· Particles respond to your state
+            {activePat.description} · Particles respond to your state
           </div>
 
           <button
@@ -657,7 +657,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
       {countdown !== null && (
         <div style={{
           zIndex: 10, textAlign: "center",
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontSize: 100, fontWeight: 800,
           color: "#60a5fa",
           animation: "countdown 1s ease",
@@ -676,7 +676,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
             pointerEvents: "none",
           }}>
             <div style={{
-              fontFamily: "'Syne', sans-serif",
+              fontFamily: "'LEMONMILK', sans-serif",
               fontStyle: "italic",
               fontSize: 34, fontWeight: 700,
               color: phaseColorHex,
@@ -732,7 +732,7 @@ export default function BreathingExercise({ emotion = "calm", stressScore = 0.3,
               transition: "all 0.2s",
             }}
           >
-            â–  End Session
+            ■ End Session
           </button>
         </>
       )}

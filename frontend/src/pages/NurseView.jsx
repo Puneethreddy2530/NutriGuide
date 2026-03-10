@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NurseView — Mobile-optimised one-tap meal consumption logger
  * ============================================================
  * Route: /nurse/:patient_id
@@ -21,7 +21,7 @@ const MEALS = [
 const CONSUMPTION_OPTIONS = [
   {
     level:   'Ate fully',
-    icon:    '✅',
+    icon:    '✓',
     label:   'Ate Fully',
     sub:     'Patient finished the meal',
     bg:      'rgba(34,197,94,0.12)',
@@ -30,7 +30,7 @@ const CONSUMPTION_OPTIONS = [
   },
   {
     level:   'Partially',
-    icon:    '⚠️',
+    icon:    '⚠',
     label:   'Partial',
     sub:     'Ate some, left the rest',
     bg:      'rgba(245,158,11,0.12)',
@@ -39,7 +39,7 @@ const CONSUMPTION_OPTIONS = [
   },
   {
     level:   'Refused',
-    icon:    '❌',
+    icon:    '✘',
     label:   'Refused',
     sub:     'Did not eat',
     bg:      'rgba(244,63,94,0.12)',
@@ -195,7 +195,7 @@ export default function NurseView() {
       <div style={{ ...card, background: '#0891B2', color: '#FFF', borderRadius: '0 0 20px 20px', margin: 0, padding: '20px 20px 24px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
           <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
-            CAP³S · Nurse Logging
+            NutriGuide · Nurse Logging
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 2 }}>{patient?.name}</div>
           <div style={{ fontSize: 14, opacity: 0.85, marginBottom: 10 }}>
@@ -203,7 +203,7 @@ export default function NurseView() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 12px', fontWeight: 600 }}>
-              🎯 {calTarget} kcal/day
+              ◎ {calTarget} kcal/day
             </span>
             <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 12px', fontWeight: 600 }}>
               {patient?.diet_stage} diet

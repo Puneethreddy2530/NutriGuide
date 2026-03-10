@@ -3,16 +3,16 @@ import LandingNavbar from "./LandingNavbar";
 import HeroScene from "./HeroScene";
 import LandingFooter from "./LandingFooter";
 
-// Google Fonts injection — NeoPulse theme fonts
+// Google Fonts injection -- NutriGuide theme fonts (Lemon Milk loaded via @font-face in index.css)
 const FONTS =
-  "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap');"
+  "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap');"
 
 export default function LandingPage({ onEnterApp }) {
-  const [activeCarouselItem, setActiveCarouselItem] = useState("fitness");
+  const [activeCarouselItem, setActiveCarouselItem] = useState("tray-vision");
 
   return (
     <div style={{
-      background: "#030308",
+      background: "var(--bg)",
       minHeight: "100vh",
       fontFamily: "'Inter', sans-serif",
       overflowX: "hidden",
@@ -23,65 +23,76 @@ export default function LandingPage({ onEnterApp }) {
         html { scroll-behavior: smooth; }
         body { overflow-x: hidden; }
 
-        /* Scrollbar styling for landing page */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb {
-          background: rgba(96,165,250,0.3);
+          background: rgba(8,145,178,0.25);
           border-radius: 2px;
         }
         ::-webkit-scrollbar-thumb:hover {
-          background: rgba(96,165,250,0.6);
+          background: rgba(8,145,178,0.45);
         }
       `}</style>
 
-      {/* Fixed Navbar */}
       <LandingNavbar
         activeCarouselItem={activeCarouselItem}
         onCarouselSwitch={setActiveCarouselItem}
         onEnterApp={onEnterApp}
       />
 
-      {/* Main GSAP Hero (scroll-driven, 500vh) */}
       <HeroScene
         onEnterApp={onEnterApp}
         activeCarouselItem={activeCarouselItem}
         onCarouselChange={setActiveCarouselItem}
       />
 
-      {/* Feature strip — appears below the scroll area */}
       <FeatureStrip onEnterApp={onEnterApp} />
 
-      {/* Footer */}
       <LandingFooter onEnterApp={onEnterApp} />
     </div>
   );
 }
 
-// ── Feature strips ─────────────────────────────────────────────────────
+// -- Feature strips ---------------------------------------------------------
 const FEATURES = [
   {
-    icon: "◎",
-    title: "Real-time Emotion AI",
-    desc: "EfficientNet detects 7 emotions from webcam feed. Mood timelines. Stress spikes. Private & on-device.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+      </svg>
+    ),
+    title: "AI Tray Auditing",
+    desc: "EfficientNet + Gemini Vision estimates plate waste per patient, per meal -- zero manual entry. Real-time ward-level compliance, fully automated.",
     color: "#60a5fa",
   },
   {
-    icon: "⬟",
-    title: "Drug Interaction GNN",
-    desc: "Graph Neural Network maps polypharmacy risks. Just enter your medications — we flag conflicts instantly.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 8v2a7 7 0 0 0 7 7"/><path d="M19 8v2a7 7 0 0 1-7 7"/><line x1="12" y1="4" x2="12" y2="16"/>
+      </svg>
+    ),
+    title: "Drug-Food Conflict Graph",
+    desc: "BioBERT GNN maps 1,200+ drug-nutrient interactions against each patient's live prescription and meal plan. Conflicts surfaced the instant they arise.",
     color: "#a78bfa",
   },
   {
-    icon: "â”",
-    title: "Predictive Timeline",
-    desc: "TFT-powered health forecasting: sleep, recovery, and mood predictions 24 hours ahead.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    ),
+    title: "Predictive Compliance AI",
+    desc: "TFT-powered temporal forecasting alerts your dietitian team 24 hours before meal adherence drops -- stopping clinical deterioration before it starts.",
     color: "#4ade80",
   },
   {
-    icon: "◌",
-    title: "Guided Breathing",
-    desc: "Adaptive breathing patterns that respond to your current stress index. Calm in 60 seconds.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    ),
+    title: "PQC-Signed Clinical RAG",
+    desc: "Every AI dietary recommendation is cryptographically signed with FIPS 204 Dilithium3 post-quantum signatures. Audit-ready for the next decade.",
     color: "#818cf8",
   },
 ];
@@ -90,37 +101,35 @@ function FeatureStrip({ onEnterApp }) {
   return (
     <section style={{
       padding: "100px 80px",
-      background: "#030308",
-      borderTop: "1px solid rgba(255,255,255,0.05)",
+      background: "var(--bg2)",
+      borderTop: "1px solid rgba(0,0,0,0.07)",
     }}>
-      {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <div style={{
-          fontSize: 9, letterSpacing: 4, color: "#60a5fa",
+          fontSize: 9, letterSpacing: 4, color: "var(--accent)",
           fontFamily: "var(--font-mono), monospace", fontWeight: 500,
           marginBottom: 16,
         }}>
-          ◎ PLATFORM CAPABILITIES
+          PLATFORM CAPABILITIES
         </div>
         <h2 style={{
           fontSize: "clamp(32px, 4vw, 56px)",
-          fontFamily: "'Syne', sans-serif",
-          fontWeight: 800, letterSpacing: -1, color: "rgba(255,255,255,0.9)",
+          fontFamily: "'LEMONMILK', sans-serif",
+          fontWeight: 800, letterSpacing: -1, color: "var(--text)",
           marginBottom: 16,
         }}>
-          Everything your health needs.
+          Everything your hospital needs.
         </h2>
         <p style={{
-          fontSize: 12, color: "rgba(255,255,255,0.35)", maxWidth: 480,
+          fontSize: 12, color: "var(--text2)", maxWidth: 480,
           margin: "0 auto", lineHeight: 1.8,
           fontFamily: "var(--font-mono), monospace",
         }}>
-          A unified platform built on three specialized AI models,
-          designed for privacy-first intelligent healthcare.
+          Four specialized AI models. One unified clinical nutrition platform.
+          Built for India's frontline dietitians -- in 9 regional languages.
         </p>
       </div>
 
-      {/* Cards grid */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
@@ -131,36 +140,35 @@ function FeatureStrip({ onEnterApp }) {
         ))}
       </div>
 
-      {/* CTA block */}
       <div style={{ textAlign: "center", marginTop: 64 }}>
         <button
           onClick={onEnterApp}
           style={{
             padding: "14px 44px",
-            background: "linear-gradient(135deg, rgba(96,165,250,0.2), rgba(167,139,250,0.2))",
-            border: "1px solid rgba(96,165,250,0.35)", borderRadius: 8,
-            color: "#60a5fa",
+            background: "linear-gradient(135deg, rgba(8,145,178,0.12), rgba(124,58,237,0.12))",
+            border: "1px solid rgba(8,145,178,0.35)", borderRadius: 8,
+            color: "var(--accent)",
             fontFamily: "var(--font-mono), monospace",
             fontSize: 10, letterSpacing: 3, fontWeight: 500,
             cursor: "pointer",
             transition: "all 0.2s",
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = "linear-gradient(135deg, rgba(96,165,250,0.3), rgba(167,139,250,0.3))";
-            e.currentTarget.style.boxShadow = "0 0 30px rgba(96,165,250,0.3)";
+            e.currentTarget.style.background = "linear-gradient(135deg, rgba(8,145,178,0.2), rgba(124,58,237,0.2))";
+            e.currentTarget.style.boxShadow = "0 0 30px rgba(8,145,178,0.2)";
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = "linear-gradient(135deg, rgba(96,165,250,0.2), rgba(167,139,250,0.2))";
+            e.currentTarget.style.background = "linear-gradient(135deg, rgba(8,145,178,0.12), rgba(124,58,237,0.12))";
             e.currentTarget.style.boxShadow = "none";
           }}
         >
-          START YOUR HEALTH JOURNEY →
+          ENTER COMMAND CENTER
         </button>
         <div style={{
-          fontSize: 9, color: "rgba(255,255,255,0.2)", marginTop: 16, letterSpacing: 2,
+          fontSize: 9, color: "var(--text3)", marginTop: 16, letterSpacing: 2,
           fontFamily: "var(--font-mono), monospace",
         }}>
-          No credit card required · Fully private · Open source
+          GKM Hospital - Clinical Dietitian Interface - 9 Indian Languages
         </div>
       </div>
     </section>
@@ -176,34 +184,32 @@ function FeatureCard({ icon, title, desc, color }) {
       onMouseLeave={() => setHov(false)}
       style={{
         padding: "28px 24px",
-        background: hov ? `rgba(${color === "#60a5fa" ? "96,165,250" : color === "#a78bfa" ? "167,139,250" : color === "#4ade80" ? "74,222,128" : "129,140,248"},0.06)` : "rgba(255,255,255,0.025)",
-        border: hov ? `1px solid ${color}44` : "1px solid rgba(255,255,255,0.06)",
-        borderRadius: 12,
+        background: hov ? `${color}08` : "rgba(0,0,0,0.02)",
+        border: hov ? `1px solid ${color}44` : "1px solid rgba(0,0,0,0.07)",
+        borderRadius: 16,
         transform: hov ? "translateY(-4px)" : "none",
-        boxShadow: hov ? `0 8px 32px ${color}22` : "none",
-        backdropFilter: "blur(8px)",
+        boxShadow: hov ? `0 12px 40px ${color}18` : "none",
         transition: "all 0.25s ease",
         cursor: "default",
       }}
     >
-      {/* Icon orb */}
       <div style={{
-        width: 42, height: 42, borderRadius: 10,
-        background: `linear-gradient(135deg, ${color}20, ${color}10)`,
-        border: `1px solid ${color}30`,
+        width: 44, height: 44, borderRadius: 12,
+        background: `${color}14`,
+        border: `1px solid ${color}28`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 18, color: color, marginBottom: 20,
+        color: color, marginBottom: 20,
       }}>
         {icon}
       </div>
       <h3 style={{
-        fontSize: 14, fontWeight: 800, color: "rgba(255,255,255,0.88)", marginBottom: 10,
-        fontFamily: "'Syne', sans-serif", letterSpacing: 0.2,
+        fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 10,
+        fontFamily: "'LEMONMILK', sans-serif", letterSpacing: 0.2,
       }}>
         {title}
       </h3>
       <p style={{
-        fontSize: 11, color: "rgba(255,255,255,0.3)", lineHeight: 1.8,
+        fontSize: 11, color: "var(--text2)", lineHeight: 1.8,
         fontFamily: "var(--font-mono), monospace",
       }}>
         {desc}
@@ -211,5 +217,3 @@ function FeatureCard({ icon, title, desc, color }) {
     </div>
   );
 }
-
-

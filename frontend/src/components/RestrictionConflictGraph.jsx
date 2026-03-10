@@ -9,15 +9,10 @@
  * Edges = two restrictions that share a forbidden ingredient (conflict zone).
  * Dangerous overlaps (e.g. low-sugar + low-carb both ban high-glycemic items)
  * glow amber; renal-specific forbidden items glow red (FORBIDDEN_renal).
- *
- * Demo line:
- * "Same pattern as a drug interaction graph — except instead of medications,
- *  we're visualising restriction conflicts. Two nodes glowing red means
- *  those two dietary rules eliminate the same ingredient. The kitchen
- *  knows exactly what's left."
  */
 
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { ollamaApi } from '../api/client.js'
 
 // ── Hardcoded restriction knowledge (from restrictions_map.json) ─────────────
 const RESTRICTION_META = {
@@ -52,14 +47,12 @@ function buildGraphData(activeRestrictions) {
       const b = RESTRICTION_META[activeRestrictions[j]]
       if (!a || !b) continue
 
-      // Find shared forbidden ingredients
       const sharedForbidden = a.forbidden.filter(f => b.forbidden.includes(f))
-      // Find shared forbidden tags
       const sharedTags = a.tags.filter(t => b.tags.includes(t))
       const shared = [...new Set([...sharedForbidden, ...sharedTags])]
 
       if (shared.length > 0) {
-        const renalConflict = shared.some(s => s.includes('FORBIDDEN_renal') || s.includes('potassium') || ['banana','tomato'].includes(s))
+        const renalConflict = shared.some(s => s.includes('FORBIDDEN_renal') || ['banana','tomato'].includes(s))
         edges.push({
           source: activeRestrictions[i],
           target: activeRestrictions[j],
@@ -73,84 +66,119 @@ function buildGraphData(activeRestrictions) {
   return { nodes, edges }
 }
 
-// ── Simple force-directed layout (no D3 dependency — pure math) ─────────────
-// We implement a minimal spring simulation so we don't need to add D3 to package.json.
-// The *pattern* is D3 force-directed; the implementation is vanilla canvas.
-function useForceLayout(nodes, edges, width, height, iterations = 120) {
+// ── Force-directed layout (vanilla JS, no D3) ────────────────────────────────
+function computeForceLayout(nodes, edges, width, height, iterations = 200) {
   const pos = {}
   const n = nodes.length
   if (n === 0) return pos
 
-  // Initial positions — circle layout
+  // Initial positions — spread on a circle with comfortable radius
+  const r0 = Math.min(width, height) * 0.36
   nodes.forEach((node, i) => {
-    const angle = (2 * Math.PI * i) / n
-    const r = Math.min(width, height) * 0.32
+    const angle = (2 * Math.PI * i) / n - Math.PI / 2
     pos[node.id] = {
-      x: width / 2 + r * Math.cos(angle),
-      y: height / 2 + r * Math.sin(angle),
+      x: width / 2 + r0 * Math.cos(angle),
+      y: height / 2 + r0 * Math.sin(angle),
     }
   })
 
-  // Spring simulation
-  const k = Math.sqrt((width * height) / Math.max(n, 1))
+  const k = Math.sqrt((width * height) / Math.max(n, 1)) * 1.4
+  const PAD = 80  // keep nodes 80px from each edge
+
   for (let iter = 0; iter < iterations; iter++) {
     const disp = {}
     nodes.forEach(v => { disp[v.id] = { x: 0, y: 0 } })
 
-    // Repulsion
+    // Repulsion between all pairs
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const vi = nodes[i].id, vj = nodes[j].id
         const dx = pos[vi].x - pos[vj].x
         const dy = pos[vi].y - pos[vj].y
-        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 0.01)
+        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 0.1)
         const force = (k * k) / dist
-        disp[vi].x += (dx / dist) * force
-        disp[vi].y += (dy / dist) * force
-        disp[vj].x -= (dx / dist) * force
-        disp[vj].y -= (dy / dist) * force
+        const fx = (dx / dist) * force, fy = (dy / dist) * force
+        disp[vi].x += fx;  disp[vi].y += fy
+        disp[vj].x -= fx;  disp[vj].y -= fy
       }
     }
 
     // Attraction along edges
     edges.forEach(e => {
-      const dx = pos[e.source].x - pos[e.target].x
-      const dy = pos[e.source].y - pos[e.target].y
-      const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 0.01)
-      const force = (dist * dist) / k
-      disp[e.source].x -= (dx / dist) * force * 0.5
-      disp[e.source].y -= (dy / dist) * force * 0.5
-      disp[e.target].x += (dx / dist) * force * 0.5
-      disp[e.target].y += (dy / dist) * force * 0.5
+      const s = pos[e.source], t = pos[e.target]
+      if (!s || !t) return
+      const dx = s.x - t.x, dy = s.y - t.y
+      const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 0.1)
+      const ideal = k * 0.8
+      const force = (dist - ideal) * 0.4
+      const fx = (dx / dist) * force, fy = (dy / dist) * force
+      disp[e.source].x -= fx;  disp[e.source].y -= fy
+      disp[e.target].x += fx;  disp[e.target].y += fy
     })
 
-    // Apply displacements with temperature cooling
-    const temp = 50 * (1 - iter / iterations)
+    // Center gravity so graph stays centred
+    nodes.forEach(v => {
+      disp[v.id].x += (width / 2 - pos[v.id].x) * 0.01
+      disp[v.id].y += (height / 2 - pos[v.id].y) * 0.01
+    })
+
+    const temp = 40 * (1 - iter / iterations)
     nodes.forEach(v => {
       const d = disp[v.id]
       const mag = Math.sqrt(d.x * d.x + d.y * d.y)
       if (mag > 0) {
         pos[v.id].x += (d.x / mag) * Math.min(mag, temp)
         pos[v.id].y += (d.y / mag) * Math.min(mag, temp)
-        // Clamp to canvas bounds with padding
-        pos[v.id].x = Math.max(60, Math.min(width - 60, pos[v.id].x))
-        pos[v.id].y = Math.max(30, Math.min(height - 30, pos[v.id].y))
+        pos[v.id].x = Math.max(PAD, Math.min(width - PAD, pos[v.id].x))
+        pos[v.id].y = Math.max(PAD, Math.min(height - PAD, pos[v.id].y))
       }
     })
   }
   return pos
 }
 
-export default function RestrictionConflictGraph({ restrictions = [], patientName = '' }) {
+export default function RestrictionConflictGraph({ restrictions = [], patientName = '', patientId = '' }) {
   const canvasRef = useRef(null)
-  const W = 520, H = 300
+  const [aiSummary, setAiSummary] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiMeta, setAiMeta] = useState(null)
+
+  async function handleAiSummarize() {
+    setAiLoading(true); setAiSummary(null); setAiMeta(null)
+    try {
+      const { edges } = buildGraphData(restrictions)
+      const conflicts = edges.map(e => ({
+        source: e.source, target: e.target,
+        shared: e.shared?.[0] || '', danger: e.danger,
+      }))
+      const result = await ollamaApi.summarize({
+        context_type: 'restrictions',
+        patient_id: patientId || patientName || 'unknown',
+        data: { restrictions, conflicts },
+      })
+      setAiSummary(result.summary)
+      setAiMeta({ model: result.model_used, gpu: result.gpu_used, ms: result.time_ms, source: result.source })
+    } catch {
+      setAiSummary('Could not generate summary — ensure Ollama or Azure is configured.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  // Responsive dimensions -- recompute on every render based on parent width
+  const W = 640, H = 420
 
   useEffect(() => {
     if (!canvasRef.current || restrictions.length === 0) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     const { nodes, edges } = buildGraphData(restrictions)
-    const pos = useForceLayout(nodes, edges, W, H)
+    const pos = computeForceLayout(nodes, edges, W, H)
+
+    // Resolve CSS custom properties (canvas API doesn't support var())
+    const cs = getComputedStyle(canvas)
+    const bgColor = cs.getPropertyValue('--bg2').trim() || '#F8F4F0'
+    const surfaceColor = cs.getPropertyValue('--bg3-solid').trim() || '#EDE8E3'
 
     let frame = 0
     let animId
@@ -159,71 +187,96 @@ export default function RestrictionConflictGraph({ restrictions = [], patientNam
       ctx.clearRect(0, 0, W, H)
 
       // Background
-      ctx.fillStyle = '#FFF3EC'
+      ctx.fillStyle = bgColor
       ctx.fillRect(0, 0, W, H)
 
-      // Grid dots (NeoPulse aesthetic)
-      ctx.fillStyle = 'rgba(0,0,0,0.04)'
-      for (let x = 20; x < W; x += 24) {
-        for (let y = 20; y < H; y += 24) {
-          ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI * 2); ctx.fill()
+      // Subtle grid dots
+      ctx.fillStyle = 'rgba(0,0,0,0.06)'
+      for (let x = 28; x < W; x += 32) {
+        for (let y = 28; y < H; y += 32) {
+          ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill()
         }
       }
 
-      // Draw edges
+      // Draw edges first (behind nodes)
       edges.forEach(e => {
         const s = pos[e.source], t = pos[e.target]
         if (!s || !t) return
-        const pulse = 0.4 + 0.3 * Math.sin(frame * 0.04)
+        const pulse = 0.45 + 0.3 * Math.sin(frame * 0.035)
         const isCritical = e.danger === 'critical'
-        ctx.beginPath()
-        ctx.moveTo(s.x, s.y)
-        ctx.lineTo(t.x, t.y)
-        ctx.strokeStyle = isCritical
+        const edgeColor = isCritical
           ? `rgba(239,68,68,${pulse})`
-          : `rgba(245,158,11,${pulse * 0.7})`
-        ctx.lineWidth = isCritical ? 2 : 1.5
-        ctx.setLineDash(isCritical ? [] : [4, 4])
+          : `rgba(245,158,11,${pulse * 0.75})`
+
+        // Glow pass for critical edges
+        if (isCritical) {
+          ctx.save()
+          ctx.shadowColor = '#ef4444'
+          ctx.shadowBlur = 8
+          ctx.beginPath()
+          ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y)
+          ctx.strokeStyle = `rgba(239,68,68,${pulse * 0.4})`
+          ctx.lineWidth = 5
+          ctx.stroke()
+          ctx.restore()
+        }
+
+        ctx.beginPath()
+        ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y)
+        ctx.strokeStyle = edgeColor
+        ctx.lineWidth = isCritical ? 2.2 : 1.6
+        ctx.setLineDash(isCritical ? [] : [6, 5])
         ctx.stroke()
         ctx.setLineDash([])
 
-        // Edge label — shared ingredient
-        const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2
-        ctx.fillStyle = isCritical ? '#ef4444aa' : '#f59e0baa'
-        ctx.font = '9px DM Mono, monospace'
+        // Edge label — mid-point, offset perpendicular slightly
+        const mx = (s.x + t.x) / 2
+        const my = (s.y + t.y) / 2
+        const dx = t.x - s.x, dy = t.y - s.y
+        const len = Math.max(Math.sqrt(dx * dx + dy * dy), 1)
+        const ox = -dy / len * 14, oy = dx / len * 14  // perpendicular offset
+
+        ctx.fillStyle = bgColor
+        const labelW = Math.min(e.label.length * 6, 100)
+        ctx.fillRect(mx + ox - labelW / 2 - 3, my + oy - 10, labelW + 6, 14)
+
+        ctx.font = '10px "DM Mono", "JetBrains Mono", monospace'
         ctx.textAlign = 'center'
-        ctx.fillText(e.label.slice(0, 14), mx, my - 4)
+        ctx.fillStyle = isCritical ? '#dc2626' : '#b45309'
+        ctx.fillText(e.label.slice(0, 16), mx + ox, my + oy)
       })
 
       // Draw nodes
+      const NODE_R = 26
       nodes.forEach(node => {
         const p = pos[node.id]
         if (!p) return
-        const pulse = 0.85 + 0.15 * Math.sin(frame * 0.05 + node.id.length)
-        const r = 22
+        const breathe = 0.9 + 0.1 * Math.sin(frame * 0.04 + node.id.length)
 
-        // Glow
-        const grd = ctx.createRadialGradient(p.x, p.y, r * 0.3, p.x, p.y, r * 2)
-        grd.addColorStop(0, node.color + '30')
+        // Glow halo
+        const grd = ctx.createRadialGradient(p.x, p.y, NODE_R * 0.3, p.x, p.y, NODE_R * 2.5 * breathe)
+        grd.addColorStop(0, node.color + '45')
         grd.addColorStop(1, 'transparent')
         ctx.fillStyle = grd
-        ctx.beginPath(); ctx.arc(p.x, p.y, r * 2 * pulse, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(p.x, p.y, NODE_R * 2.5 * breathe, 0, Math.PI * 2); ctx.fill()
 
         // Node circle
-        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
-        ctx.fillStyle = '#FFFFFF'
+        ctx.beginPath(); ctx.arc(p.x, p.y, NODE_R, 0, Math.PI * 2)
+        ctx.fillStyle = surfaceColor
         ctx.fill()
         ctx.strokeStyle = node.color
-        ctx.lineWidth = node.isRenal ? 2.5 : 1.5
+        ctx.lineWidth = node.isRenal ? 2.8 : 1.8
         ctx.stroke()
 
-        // Label
-        ctx.fillStyle = 'rgba(0,0,0,0.7)'
-        ctx.font = `${node.isRenal ? 'bold' : 'normal'} 9px 'DM Mono', monospace`
+        // Label — word-wrap by splitting on space
         ctx.textAlign = 'center'
         const words = node.label.split(' ')
+        const lineH = 11
+        const yStart = p.y - ((words.length - 1) * lineH) / 2
         words.forEach((w, i) => {
-          ctx.fillText(w, p.x, p.y + (i - (words.length - 1) / 2) * 11)
+          ctx.font = `${node.isRenal ? '700' : '500'} 9.5px "DM Mono", monospace`
+          ctx.fillStyle = node.color
+          ctx.fillText(w, p.x, yStart + i * lineH)
         })
       })
 
@@ -248,7 +301,7 @@ export default function RestrictionConflictGraph({ restrictions = [], patientNam
       <div style={{
         fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase',
         letterSpacing: '0.08em', marginBottom: 12,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
       }}>
         <span>
           <span style={{ color: 'var(--teal)' }}>⬡ </span>
@@ -257,14 +310,17 @@ export default function RestrictionConflictGraph({ restrictions = [], patientNam
             — pattern: NeoPulse DrugInteractionGraph
           </span>
         </span>
-        {criticalCount > 0 && (
-          <span style={{
-            background: '#ef444420', color: '#ef4444', border: '1px solid #ef444440',
-            borderRadius: 99, fontSize: 10, fontWeight: 700, padding: '2px 10px',
-          }}>
-            {criticalCount} critical overlap{criticalCount > 1 ? 's' : ''}
-          </span>
-        )}
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 10, color: 'var(--text3)' }}>{restrictions.length} restrictions</span>
+          {criticalCount > 0 && (
+            <span style={{
+              background: '#ef444420', color: '#ef4444', border: '1px solid #ef444440',
+              borderRadius: 99, fontSize: 10, fontWeight: 700, padding: '2px 10px',
+            }}>
+              {criticalCount} critical overlap{criticalCount > 1 ? 's' : ''}
+            </span>
+          )}
+        </span>
       </div>
 
       <canvas
@@ -272,11 +328,81 @@ export default function RestrictionConflictGraph({ restrictions = [], patientNam
         style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
       />
 
-      <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 10, color: 'var(--text3)' }}>
-        <span><span style={{ color: '#ef4444' }}>─── </span>Critical (renal conflict)</span>
-        <span><span style={{ color: '#f59e0b' }}>- - </span>Shared forbidden ingredient</span>
-        <span><span style={{ color: 'var(--text3)' }}>Node size = restriction severity</span></span>
+      <div style={{ display: 'flex', gap: 20, marginTop: 10, fontSize: 10, color: 'var(--text3)', flexWrap: 'wrap' }}>
+        <span><span style={{ color: '#ef4444' }}>──── </span>Critical (renal conflict)</span>
+        <span><span style={{ color: '#f59e0b' }}>- - - </span>Shared forbidden ingredient</span>
+        <span style={{ marginLeft: 'auto', color: 'var(--text3)' }}>Hover edge labels for shared items</span>
+      </div>
+
+      {/* ── AI Plain-Language Summary Panel ── */}
+      <div style={{
+        marginTop: 20,
+        background: 'linear-gradient(135deg, #1e3a5f18, #1e3a5f08)',
+        border: '1px solid #60a5fa30',
+        borderRadius: 10,
+        padding: '14px 16px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', fontFamily: 'var(--font-head)' }}>
+            \u25ce Plain Language Summary
+          </span>
+          <span style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: '0.1em',
+            background: '#60a5fa22', border: '1px solid #60a5fa44',
+            color: '#60a5fa', borderRadius: 99, padding: '2px 8px',
+          }}>OLLAMA GPU</span>
+        </div>
+
+        <button
+          onClick={handleAiSummarize}
+          disabled={aiLoading || restrictions.length === 0}
+          style={{
+            background: aiLoading ? '#60a5fa22' : 'linear-gradient(90deg, #2563eb, #1d4ed8)',
+            color: '#fff', border: 'none', borderRadius: 7,
+            padding: '7px 18px', fontSize: 12, fontWeight: 600,
+            cursor: aiLoading ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            opacity: restrictions.length === 0 ? 0.5 : 1,
+          }}
+        >
+          {aiLoading
+            ? <><span style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid #ffffff88', borderTopColor: '#fff', borderRadius: '50%', animation: 'rcg-spin 0.7s linear infinite' }} /> Analyzing…</>
+            : <>{aiSummary ? '⚡ Re-explain' : '⚡ Explain in plain language'}</>}
+        </button>
+
+        {aiSummary && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{
+              fontSize: 13, lineHeight: 1.65, color: 'var(--text)',
+              background: 'var(--bg2)', borderLeft: '3px solid #60a5fa',
+              borderRadius: '0 6px 6px 0', padding: '10px 14px',
+            }}>
+              {aiSummary}
+            </div>
+            {aiMeta && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', fontSize: 10, color: 'var(--text3)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text2)' }}>{aiMeta.model}</span>
+                {aiMeta.gpu && (
+                  <span style={{ background: '#4ade8022', border: '1px solid #4ade8044', color: '#4ade80', borderRadius: 99, padding: '1px 8px', fontSize: 9, fontWeight: 700 }}>▲ GPU Accelerated</span>
+                )}
+                {aiMeta.source === 'azure_fallback' && (
+                  <span style={{ background: '#f59e0b22', border: '1px solid #f59e0b44', color: '#f59e0b', borderRadius: 99, padding: '1px 8px', fontSize: 9, fontWeight: 700 }}>☁ Azure Fallback</span>
+                )}
+                {aiMeta.ms && <span>{(aiMeta.ms / 1000).toFixed(1)}s</span>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!aiSummary && !aiLoading && (
+          <p style={{ marginTop: 10, fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>
+            Click above to get a plain-language explanation of this patient's restriction conflicts.
+          </p>
+        )}
       </div>
     </div>
   )
 }
+
+<style>{`@keyframes rcg-spin { to { transform: rotate(360deg); } }`}</style>
+

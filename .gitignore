@@ -33,5 +33,11 @@ neopulse_keys.json
 .DS_Store
 Thumbs.db
 
+# VS Code
+.vscode/
+
+# WhatsApp bot auth session
+.wwebjs_auth/
+
 # ngrok binary
 ngrok.exe

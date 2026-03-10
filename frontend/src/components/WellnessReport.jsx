@@ -1,4 +1,4 @@
-﻿// WellnessReport.jsx — CAP³S Weekly Nutrition Report (light-theme, no JWT)
+﻿// WellnessReport.jsx — NutriGuide Weekly Nutrition Report (light-theme, no JWT)
 // Uses GET /api/v1/reports/weekly/{patient_id} — PDF generated server-side by ReportLab
 import { useState } from "react";
 
@@ -52,7 +52,7 @@ async function downloadWeeklyReport(patientId, patientName, setLoading, setDone,
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `CAP3S_Nutrition_${patientName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    a.download = `NutriGuide_Nutrition_${patientName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
     setDone(true);
@@ -106,7 +106,7 @@ export default function WellnessReport() {
       </div>
 
       {/* Main report card */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 20 }}>
         <div className="card">
           <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text1)", marginBottom: 4, fontFamily: "var(--font-head)" }}>
             Weekly Nutrition Report
@@ -150,38 +150,13 @@ export default function WellnessReport() {
           </button>
         </div>
 
-        {/* ReportLab info card */}
-        <div className="card" style={{ borderColor: "#00C9B144", background: "#00C9B108" }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text1)", marginBottom: 4, fontFamily: "var(--font-head)" }}>
-            How Reports Are Generated
-          </div>
-          <div style={{ fontSize: 11, color: "var(--teal)", marginBottom: 16, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-            Server-side · ReportLab · Deterministic
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            {[
-              "PDF built server-side by ReportLab — no client-side PDF library needed",
-              "Macros computed by 0/1 Knapsack algorithm — not hallucinated by LLM",
-              "PQC Dilithium3 signature appended as a verifiable footer block",
-              "If backend is offline, ensure reportlab is installed in the backend venv",
-            ].map((b) => (
-              <div key={b} style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6, display: "flex", gap: 8 }}>
-                <span style={{ color: "var(--teal)", flexShrink: 0 }}>◆</span>
-                {b}
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: "var(--text3)", background: "var(--bg3)", borderRadius: 8, padding: "8px 12px", fontFamily: "var(--font-mono, monospace)" }}>
-            pip install reportlab==4.2.5
-          </div>
-        </div>
       </div>
 
       <div className="card" style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.6 }}>
         <strong style={{ color: "var(--text2)" }}>Note:</strong> Full PDF generation requires{" "}
         <code style={{ background: "var(--bg3)", padding: "1px 5px", borderRadius: 4 }}>reportlab</code> to be installed in the backend
         environment. Run <code style={{ background: "var(--bg3)", padding: "1px 5px", borderRadius: 4 }}>pip install reportlab</code>{" "}
-        inside the backend venv if you see a 500 error. The doctor/therapist summary endpoint is not available in CAP³S v1.
+        inside the backend venv if you see a 500 error. The doctor/therapist summary endpoint is not available in NutriGuide v1.
       </div>
     </div>
   );

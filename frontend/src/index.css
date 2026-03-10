@@ -1,8 +1,21 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap');
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;600;700&family=DM+Mono:wght@300;400;500&display=swap');
+
+/* ── Lemon Milk — custom display font ── */
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-Light.otf') format('opentype'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-LightItalic.otf') format('opentype'); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-RegularItalic.otf') format('opentype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-MediumItalic.otf') format('opentype'); font-weight: 500; font-style: italic; font-display: swap; }
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'LEMONMILK'; src: url('/fonts/LEMONMILK-BoldItalic.otf') format('opentype'); font-weight: 700; font-style: italic; font-display: swap; }
+
+/* ── CashMarket — bold-rounded content font ── */
+@font-face { font-family: 'CashMarket'; src: url('/fonts/CashMarket-BoldRounded.ttf') format('truetype'); font-weight: 100 900; font-style: normal; font-display: swap; }
 
 /* =========================================================
-   CAP³S — PREMIUM LIGHT DESIGN SYSTEM 2025
+   NutriGuide — PREMIUM LIGHT DESIGN SYSTEM 2025
    Warm cream · Stripe / Linear / Apple Health aesthetic · Token-driven
    ========================================================= */
 
@@ -52,8 +65,8 @@
   --text-muted:rgba(28,28,30,0.22);
 
   /* Fonts */
-  --font-head:'Space Grotesk',sans-serif;
-  --font-body:'Inter',sans-serif;
+  --font-head:'LEMONMILK',sans-serif;
+  --font-body:'CashMarket','Inter',sans-serif;
   --font-mono:'DM Mono',monospace;
 
   /* Radius */
@@ -90,6 +103,7 @@
 
 html{
   scroll-behavior:auto;
+  overflow-x:hidden;
 }
 
 body{
@@ -97,12 +111,14 @@ body{
   min-height:100vh;
   color:var(--text);
   font-family:var(--font-body);
-  font-size:13px;
-  line-height:1.65;
-  letter-spacing:0.01em;
+  font-size:16px;
+  font-weight:300;
+  line-height:1.7;
+  letter-spacing:0.02em;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   overflow-x:hidden;
+  overflow-y:visible;
 }
 
 /* Ambient grid */

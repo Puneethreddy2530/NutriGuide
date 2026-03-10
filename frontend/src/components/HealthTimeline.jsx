@@ -44,40 +44,40 @@ const riskColor = (r) => {
 
 // ── Life Events: narrative milestones anchored to "N days ago" ──────────────────
 const LIFE_EVENTS = [
-  { daysAgo: 58, icon: "🌑", label: "Rock Bottom", color: "#ef4444",
+  { daysAgo: 58, icon: "◉", label: "Rock Bottom", color: "#ef4444",
     story: "Panic attack at work. Couldn't breathe in the meeting room. Left early.",
     sentiment: -0.82, stress: 0.91, emotion: "anxious" },
-  { daysAgo: 55, icon: "💊", label: "Started Medication", color: "#a78bfa",
+  { daysAgo: 55, icon: "Rx", label: "Started Medication", color: "#a78bfa",
     story: "Dr. Mehra prescribed sertraline 50mg. Scared but hopeful.",
     sentiment: -0.4, stress: 0.7, emotion: "anxious" },
-  { daysAgo: 48, icon: "✍️", label: "First Journal Entry", color: "#60a5fa",
+  { daysAgo: 48, icon: "✍", label: "First Journal Entry", color: "#60a5fa",
     story: "Started writing every morning. Just 5 minutes. Already feels lighter.",
     sentiment: -0.1, stress: 0.6, emotion: "calm" },
-  { daysAgo: 42, icon: "🧠", label: "First Therapy Session", color: "#34d399",
+  { daysAgo: 42, icon: "◈", label: "First Therapy Session", color: "#34d399",
     story: "Talked about the panic attacks. Dr. felt they were work-stress related. CBT plan starts.",
     sentiment: 0.15, stress: 0.55, emotion: "focused" },
-  { daysAgo: 35, icon: "😤", label: "Bad Week", color: "#fb923c",
+  { daysAgo: 35, icon: "▽", label: "Bad Week", color: "#fb923c",
     story: "Fight with Rahul. Project deadline looming. Skipped meds for two days. Relapsed into spiraling.",
     sentiment: -0.65, stress: 0.88, emotion: "stressed" },
-  { daysAgo: 28, icon: "🔄", label: "Therapy Breakthrough", color: "#34d399",
+  { daysAgo: 28, icon: "↻", label: "Therapy Breakthrough", color: "#34d399",
     story: "Realized the dread is a pattern from my dad's critical voice. Named it. Feels different now.",
     sentiment: 0.42, stress: 0.35, emotion: "calm" },
-  { daysAgo: 21, icon: "🏃", label: "First Run in Months", color: "#00f5d4",
+  { daysAgo: 21, icon: "→", label: "First Run in Months", color: "#00f5d4",
     story: "3km. Slow. Lungs burning. But I did it. First workout since August.",
     sentiment: 0.55, stress: 0.3, emotion: "joy" },
-  { daysAgo: 14, icon: "✈️", label: "Weekend Trip", color: "#facc15",
+  { daysAgo: 14, icon: "△", label: "Weekend Trip", color: "#facc15",
     story: "Pondicherry with college friends. No screens for 2 days. Felt human again.",
     sentiment: 0.78, stress: 0.15, emotion: "joy" },
-  { daysAgo: 9, icon: "⚖️", label: "Medication Adjusted", color: "#a78bfa",
+  { daysAgo: 9, icon: "⊕", label: "Medication Adjusted", color: "#a78bfa",
     story: "Dose increased to 100mg after 6-week review. Some drowsiness but manageable.",
     sentiment: 0.2, stress: 0.42, emotion: "calm" },
-  { daysAgo: 4, icon: "🌿", label: "Good Streak", color: "#4ade80",
+  { daysAgo: 4, icon: "✦", label: "Good Streak", color: "#4ade80",
     story: "4 days of consistent journaling, meds, and runs. This is what stability feels like.",
     sentiment: 0.6, stress: 0.28, emotion: "focused" },
-  { daysAgo: 1, icon: "☀️", label: "Yesterday", color: "#60a5fa",
+  { daysAgo: 1, icon: "☀", label: "Yesterday", color: "#60a5fa",
     story: "Productive day. Got through the backlog. Slept before midnight for the first time this month.",
     sentiment: 0.52, stress: 0.3, emotion: "calm" },
-  { daysAgo: 0, icon: "📍", label: "Today", color: "#ffffff",
+  { daysAgo: 0, icon: "◉", label: "Today", color: "#ffffff",
     story: "Opening NeoPulse. Mood feels stable. Let's see what the day brings.",
     sentiment: 0.35, stress: 0.32, emotion: "calm" },
 ];
@@ -617,7 +617,7 @@ export default function HealthTimeline({ token }) {
       color: "rgba(255,255,255,0.88)",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
         .tl-scroll::-webkit-scrollbar { height: 3px; }
         .tl-scroll::-webkit-scrollbar-track { background:rgba(96,165,250,0.20); }
@@ -629,11 +629,11 @@ export default function HealthTimeline({ token }) {
       {/* Dashboard Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "'LEMONMILK', sans-serif",
           fontSize: 28, fontWeight: 800, fontStyle: "italic",
           letterSpacing: -0.5, color: "#60a5fa",
         }}>
-          Life Tape 📅
+          Life Tape
         </div>
         <div style={{ fontSize: 8, color: "rgba(96,165,250,0.20)", letterSpacing: 4, marginTop: 2 }}>
           YOUR HEALTH STORY · DAY BY DAY
@@ -813,7 +813,7 @@ export default function HealthTimeline({ token }) {
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>
+              <div style={{ fontFamily: "'LEMONMILK', sans-serif", fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>
                 {new Date(selectedDay.date + "T00:00:00").toLocaleDateString("en", {
                   weekday: "long", month: "long", day: "numeric",
                 })}
